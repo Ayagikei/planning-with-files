@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-01-10
+
+### Fixed
+
+- **Template files not included in plugin package** - Added `assets` field to plugin.json to ensure templates and scripts are bundled during installation
+- Templates (`task_plan.md`, `findings.md`, `progress.md`) now correctly copied to cache directory
+- Scripts (`check-complete.sh`, `init-session.sh`) now correctly copied to cache directory
+- Fixes "Error reading file" when accessing templates after `/plugin install`
+
 ## [2.1.0] - 2026-01-10
 
 ### Added

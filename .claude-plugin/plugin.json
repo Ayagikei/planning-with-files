@@ -1,6 +1,6 @@
 {
   "name": "planning-with-files",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Manus-style persistent markdown files for planning, progress tracking, and knowledge storage. Includes hooks for automatic plan re-reading and completion verification. Use when starting complex tasks, multi-step projects, research tasks, or when you want structured output.",
   "author": {
     "name": "OthmanAdi",
@@ -17,5 +17,12 @@
     "task-management",
     "hooks",
     "templates"
+  ],
+  "assets": [
+    "skills/planning-with-files/templates/task_plan.md",
+    "skills/planning-with-files/templates/findings.md",
+    "skills/planning-with-files/templates/progress.md",
+    "skills/planning-with-files/scripts/check-complete.sh",
+    "skills/planning-with-files/scripts/init-session.sh"
   ]
 }

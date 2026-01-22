@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.1] - 2026-01-22
+
+### Fixed
+
+- **Dynamic Python Command Detection** (Issue #41 by @wqh17101)
+  - Replaced hardcoded `python3` with dynamic detection: `$(command -v python3 || command -v python)`
+  - Added Windows PowerShell commands using `python` directly
+  - Fixed in all 5 IDE-specific SKILL.md files (Claude Code, Codex, Cursor, Kilocode, OpenCode)
+  - Resolves compatibility issues on Windows/Anaconda where only `python` exists
+
+### Thanks
+
+- @wqh17101 for reporting and suggesting the fix (Issue #41)
+
+---
+
 ## [2.7.0] - 2026-01-22
 
 ### Added

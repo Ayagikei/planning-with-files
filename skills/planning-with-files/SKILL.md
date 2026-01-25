@@ -1,7 +1,7 @@
 ---
 name: planning-with-files
 version: "2.4.1"
-description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls. Now with automatic session recovery after /clear.
+description: Use when starting complex multi-step tasks, research, or work that needs persistent on-disk planning artifacts across many tool calls.
 user-invocable: true
 allowed-tools:
   - Read
@@ -62,24 +62,35 @@ If catchup report shows unsynced context:
 ## Important: Where Files Go
 
 - **Templates** are in `${CLAUDE_PLUGIN_ROOT}/templates/`
-- **Your planning files** go in **your project directory**
+- **Your planning files** go in the **project-specified docs directory** (never the repo root)
 
 | Location | What Goes There |
 |----------|-----------------|
 | Skill directory (`${CLAUDE_PLUGIN_ROOT}/`) | Templates, scripts, reference docs |
-| Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
+| Project docs directory | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Quick Start
 
 Before ANY complex task:
 
-1. **Create `task_plan.md`** — Use [templates/task_plan.md](templates/task_plan.md) as reference
-2. **Create `findings.md`** — Use [templates/findings.md](templates/findings.md) as reference
-3. **Create `progress.md`** — Use [templates/progress.md](templates/progress.md) as reference
-4. **Re-read plan before decisions** — Refreshes goals in attention window
-5. **Update after each phase** — Mark complete, log errors
+1. **Find the project’s docs/planning location** — Check AGENTS/README/docs; if unclear, ask the user.
+2. **Create `task_plan.md`** — Use [templates/task_plan.md](templates/task_plan.md) as reference
+3. **Create `findings.md`** — Use [templates/findings.md](templates/findings.md) as reference
+4. **Create `progress.md`** — Use [templates/progress.md](templates/progress.md) as reference
+5. **Re-read plan before decisions** — Refreshes goals in attention window
+6. **Update after each phase** — Mark complete, log errors
 
-> **Note:** Planning files go in your project root, not the skill installation folder.
+> **Note:** Planning files go in the project’s docs/planning location (per project conventions), not the repo root and not the skill installation folder.
+
+## Example
+
+Project convention: `docs/releases/1.6.0/feature-reminders/`
+
+```
+docs/releases/1.6.0/feature-reminders/task_plan.md
+docs/releases/1.6.0/feature-reminders/findings.md
+docs/releases/1.6.0/feature-reminders/progress.md
+```
 
 ## The Core Pattern
 
@@ -99,6 +110,20 @@ Filesystem = Disk (persistent, unlimited)
 | `progress.md` | Session log, test results | Throughout session |
 
 ## Critical Rules
+
+### 0. Confirm Planning Location
+Always place planning files under the project’s docs/planning directory (not the repo root). If the location is unclear, ask the user. For global/system work, use `~/.codex/tmp/plans/<YYYY-MM-DD>-<topic>/`.
+
+### Rationalizations to Avoid
+| Excuse | Reality |
+| --- | --- |
+| "Root is fastest" | Root placement violates project organization; use docs location. |
+| "Docs folder is unclear" | Ask the user or check AGENTS/README/docs. |
+| "This is just planning, not code" | Planning files are part of project documentation. |
+
+### Red Flags
+- Creating planning files in the repo root.
+- Skipping location discovery due to time pressure.
 
 ### 1. Create Plan First
 Never start a complex task without `task_plan.md`. Non-negotiable.
@@ -217,6 +242,12 @@ Helper scripts for automation:
 - **Manus Principles:** See [reference.md](reference.md)
 - **Real Examples:** See [examples.md](examples.md)
 
+## Common Mistakes
+
+- Creating planning files in the repo root instead of the docs/planning directory.
+- Skipping the location check when under time pressure.
+- Updating progress in memory only (not writing to files).
+
 ## Anti-Patterns
 
 | Don't | Do Instead |
@@ -227,4 +258,4 @@ Helper scripts for automation:
 | Stuff everything in context | Store large content in files |
 | Start executing immediately | Create plan file FIRST |
 | Repeat failed actions | Track attempts, mutate approach |
-| Create files in skill directory | Create files in your project |
+| Create files in skill directory | Create files in your project docs/planning directory |

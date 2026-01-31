@@ -1,6 +1,6 @@
 ---
 name: planning-with-files
-version: "2.4.1"
+version: "2.10.0"
 description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls. Now with automatic session recovery after /clear.
 user-invocable: true
 allowed-tools:
@@ -28,10 +28,28 @@ hooks:
         - type: command
           command: |
             SCRIPT_DIR="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/planning-with-files}/scripts"
-            if command -v pwsh &> /dev/null && [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OS" == "Windows_NT" ]]; then
-              pwsh -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null || powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null || bash "$SCRIPT_DIR/check-complete.sh"
+
+            IS_WINDOWS=0
+            if [ "${OS-}" = "Windows_NT" ]; then
+              IS_WINDOWS=1
             else
-              bash "$SCRIPT_DIR/check-complete.sh"
+              UNAME_S="$(uname -s 2>/dev/null || echo '')"
+              case "$UNAME_S" in
+                CYGWIN*|MINGW*|MSYS*) IS_WINDOWS=1 ;;
+              esac
+            fi
+
+            if [ "$IS_WINDOWS" -eq 1 ]; then
+              if command -v pwsh >/dev/null 2>&1; then
+                pwsh -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
+                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
+                sh "$SCRIPT_DIR/check-complete.sh"
+              else
+                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
+                sh "$SCRIPT_DIR/check-complete.sh"
+              fi
+            else
+              sh "$SCRIPT_DIR/check-complete.sh"
             fi
 ---
 

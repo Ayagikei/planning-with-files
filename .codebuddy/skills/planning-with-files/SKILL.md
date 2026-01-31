@@ -68,7 +68,7 @@ $(command -v python3 || command -v python) ${CLAUDE_PLUGIN_ROOT}/scripts/session
 
 ```powershell
 # Windows PowerShell
-python "$env:USERPROFILE\.kilocode\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
+python "$env:USERPROFILE\.codebuddy\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
 ```
 
 If catchup report shows unsynced context:

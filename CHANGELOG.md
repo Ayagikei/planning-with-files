@@ -2,6 +2,98 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.11.0] - 2026-01-26
+
+### Added
+
+- **`/plan` Command for Easier Autocomplete** (Issue #39)
+  - Added `commands/plan.md` creating `/planning-with-files:plan` command
+  - Users can now type `/plan` and see the command in autocomplete
+  - Shorter alternative to `/planning-with-files:start`
+  - Works immediately after plugin installation - no extra setup required
+
+### Usage
+
+After installing the plugin, you have two command options:
+
+| Command | How to Find | Works Since |
+|---------|-------------|-------------|
+| `/planning-with-files:plan` | Type `/plan` | v2.11.0 |
+| `/planning-with-files:start` | Type `/planning` | v2.6.0 |
+
+### Thanks
+
+- @wqh17101 for persistent reminders in Discussion #36
+- @dalisoft, @zoffyzhang, @yyuziyu for feedback and workarounds in Issue #39
+- Community for patience while we found the right solution
+
+---
+
+## [2.10.0] - 2026-01-26
+
+### Added
+
+- **Kiro Support** (Issue #55 by @453783374)
+  - Native Kiro steering files integration
+  - Created `.kiro/steering/` with planning workflow, rules, and templates
+  - Added helper scripts in `.kiro/scripts/`
+  - Added `docs/kiro.md` installation guide
+  - Added Kiro badge to README
+
+### Note
+
+Kiro uses **Steering Files** (`.kiro/steering/*.md`) instead of the standard `SKILL.md` format. The steering files are automatically loaded by Kiro in every interaction.
+
+---
+
+## [2.9.0] - 2026-01-26
+
+### Added
+
+- **Moltbot Support** (formerly Clawd CLI)
+  - Added Moltbot integration for workspace and local skills
+  - Created `.moltbot/skills/planning-with-files/` skill bundle
+  - Full templates, scripts, and references included
+  - Cross-platform support (macOS, Linux, Windows)
+  - Added `docs/moltbot.md` installation guide
+  - Added Moltbot badge to README
+
+### Changed
+
+- Updated plugin.json description to highlight multi-IDE support
+- Added new keywords: moltbot, gemini, cursor, continue, multi-ide, agent-skills
+- Now supports 10+ AI coding assistants
+
+---
+
+## [2.8.0] - 2026-01-26
+
+### Added
+
+- **Continue IDE Support** (PR #56 by @murphyXu)
+  - Added Continue.dev integration for VS Code and JetBrains IDEs
+  - Created `.continue/skills/planning-with-files/` skill bundle
+  - Created `.continue/prompts/planning-with-files.prompt` slash command (Chinese)
+  - Added `docs/continue.md` installation guide
+  - Added `scripts/check-continue.sh` validator
+  - Full templates, scripts, and references included
+
+### Fixed
+
+- **POSIX sh Compatibility** (PR #57 by @SaladDay)
+  - Fixed Stop hook failures on Debian/Ubuntu systems using dash as `/bin/sh`
+  - Replaced bash-only syntax (`[[`, `&>`) with POSIX-compliant constructs
+  - Added shell-agnostic Windows detection using `uname -s` and `$OS`
+  - Applied fix to all 5 IDE-specific SKILL.md files
+  - Addresses issue reported by @aqlkzf in #32
+
+### Thanks
+
+- @murphyXu for Continue IDE integration (PR #56)
+- @SaladDay for POSIX sh compatibility fix (PR #57)
+
+---
+
 ## [2.7.1] - 2026-01-22
 
 ### Fixed

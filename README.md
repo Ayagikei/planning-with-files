@@ -24,6 +24,12 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 [![Version](https://img.shields.io/badge/version-2.13.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
 [![SkillCheck Validated](https://img.shields.io/badge/SkillCheck-Validated-4c1)](https://getskillcheck.com)
 
+## Fork Changes (Ayagikei/xxx)
+
+- Strengthened planning file location rules: planning artifacts live under each project’s docs/planning directory (not repo root), with explicit discovery steps and an example layout.
+- Added rationale and “common mistakes” guidance around planning file placement to reduce drift and inconsistency.
+- Kept fork-specific metadata in `skills/planning-with-files/SKILL.md` to match this policy.
+
 ## Quick Install
 
 ```bash

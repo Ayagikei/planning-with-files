@@ -71,6 +71,8 @@ $(command -v python3 || command -v python) ${CLAUDE_PLUGIN_ROOT}/scripts/session
 python "$env:USERPROFILE\.codex\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
 ```
 
+> Codex note: Codex does not require `session-catchup.py` and does not set `CLAUDE_PLUGIN_ROOT`. In Codex, explicitly skip this step and state that it is not needed.
+
 If catchup report shows unsynced context:
 1. Run `git diff --stat` to see actual code changes
 2. Read current planning files
@@ -98,6 +100,14 @@ Before ANY complex task:
 5. **Update after each phase** — Mark complete, log errors
 
 > **Note:** Planning files go in your project root, not the skill installation folder.
+
+## If You Must Ask for Execution Mode (Codex)
+
+Use this ordering to keep a safe default and include the "current session" option:
+
+1. 当前会话继续执行 (Recommended)
+2. 子代理驱动（本会话内逐任务执行）
+3. 并行会话（另开执行 plans）
 
 ## The Core Pattern
 

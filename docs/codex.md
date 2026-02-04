@@ -39,6 +39,14 @@ For complex tasks (3+ steps, research, projects):
 </IMPORTANT>
 ```
 
+## Codex Notes
+
+- Codex does not require `session-catchup.py` and does not set `CLAUDE_PLUGIN_ROOT`. In Codex, explicitly skip session-catchup and state that it is not needed.
+- If you must prompt for execution mode, include the "current session" option:
+  1. 当前会话继续执行 (Recommended)
+  2. 子代理驱动（本会话内逐任务执行）
+  3. 并行会话（另开执行 plans）
+
 ## Verification
 
 ```bash

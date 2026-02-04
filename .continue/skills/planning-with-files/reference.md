@@ -170,7 +170,7 @@ Manus operates in a continuous 7-step loop:
 | File | Purpose | When Created | When Updated |
 |------|---------|--------------|--------------|
 | `task_plan.md` | Phase tracking, progress | Task start | After completing phases |
-| `findings.md` | Discoveries, decisions | After any discovery | After viewing images/PDFs |
+| `findings.md` | Discoveries, decisions | After ANY discovery | After viewing images/PDFs |
 | `progress.md` | Session log, what's done | At breakpoints | Throughout session |
 | Code files | Implementation | Before execution | After errors |
 
@@ -178,11 +178,11 @@ Manus operates in a continuous 7-step loop:
 
 ## Critical Constraints
 
-- Single-action execution: one tool call per turn
-- Plan is required: always know goal, current phase, remaining phases
-- Files are memory: context is volatile; filesystem is persistent
-- Never repeat failures: if action failed, next action must be different
-- Communication is a tool: message types include info, ask, result
+- **Single-Action Execution:** ONE tool call per turn. No parallel execution.
+- **Plan is Required:** Agent must ALWAYS know: goal, current phase, remaining phases
+- **Files are Memory:** Context = volatile. Filesystem = persistent.
+- **Never Repeat Failures:** If action failed, next action MUST be different
+- **Communication is a Tool:** Message types: `info` (progress), `ask` (blocking), `result` (terminal)
 
 ---
 

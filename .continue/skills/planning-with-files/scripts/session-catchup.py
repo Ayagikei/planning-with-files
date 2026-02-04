@@ -142,17 +142,20 @@ def main():
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     project_dir = get_project_dir(project_path)
 
+    # Check if planning files exist (indicates active task)
     has_planning_files = any(
         Path(project_path, f).exists() for f in PLANNING_FILES
     )
 
     if not project_dir.exists():
+        # No previous sessions, nothing to catch up on
         return
 
     sessions = get_sessions_sorted(project_dir)
     if len(sessions) < 1:
         return
 
+    # Find a substantial previous session
     target_session = None
     for session in sessions:
         if session.stat().st_size > 5000:
@@ -165,6 +168,7 @@ def main():
     messages = parse_session_messages(target_session)
     last_update_line, last_update_file = find_last_planning_update(messages)
 
+    # Only output if there's unsynced content
     if last_update_line < 0:
         messages_after = extract_messages_after(messages, len(messages) - 30)
     else:
@@ -173,6 +177,7 @@ def main():
     if not messages_after:
         return
 
+    # Output catchup report
     print("\n[planning-with-files] SESSION CATCHUP DETECTED")
     print(f"Previous session: {target_session.stem}")
 
@@ -183,7 +188,7 @@ def main():
         print("No planning file updates found in previous session")
 
     print("\n--- UNSYNCED CONTEXT ---")
-    for msg in messages_after[-15:]:
+    for msg in messages_after[-15:]:  # Last 15 messages
         if msg['role'] == 'user':
             print(f"USER: {msg['content'][:300]}")
         else:

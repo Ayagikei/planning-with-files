@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Session Catchup Script for planning-with-files (Pi Edition)
+Session Catchup Script for planning-with-files
 
-Session-agnostic scanning: finds the most recent planning file update across
-ALL sessions, then collects all conversation from that point forward through
-all subsequent sessions until now.
+Analyzes the previous session to find unsynced context after the last
+planning file update. Designed to run on SessionStart.
 
 Usage: python3 session-catchup.py [project-path]
 """
@@ -14,176 +13,127 @@ import sys
 import os
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
+from datetime import datetime
 
 PLANNING_FILES = ['task_plan.md', 'progress.md', 'findings.md']
 
 
 def get_project_dir(project_path: str) -> Path:
-    """Convert project path to Pi's session storage path format."""
-    # expanduser handles ~, abspath handles relative paths
-    abs_path = os.path.abspath(os.path.expanduser(project_path))
-    
-    # Pi treats paths as directory paths ending in /
-    if not abs_path.endswith('/'):
-        abs_path += '/'
-    
-    # Pi session directory encoding:
-    # 1. Replace '/' with '-'
-    # 2. Wrap with '-' at start and end
-    # e.g. /Users/tmr/ -> -Users-tmr- -> --Users-tmr--
-    sanitized = abs_path.replace('/', '-')
-    sanitized = '-' + sanitized + '-'
-    
-    # Pi session storage is in ~/.pi/agent/sessions/
-    return Path.home() / '.pi' / 'agent' / 'sessions' / sanitized
+    """Convert project path to Claude's storage path format."""
+    sanitized = project_path.replace('/', '-')
+    if not sanitized.startswith('-'):
+        sanitized = '-' + sanitized
+    sanitized = sanitized.replace('_', '-')
+    return Path.home() / '.claude' / 'projects' / sanitized
 
 
 def get_sessions_sorted(project_dir: Path) -> List[Path]:
     """Get all session files sorted by modification time (newest first)."""
-    if not project_dir.exists():
-        # Fallback: try without trailing slash doubling? 
-        # No, let's stick to the observed pattern.
-        return []
-        
     sessions = list(project_dir.glob('*.jsonl'))
-    # Filter out any non-session files if any
-    sessions = [s for s in sessions if s.stat().st_size > 0]
-    return sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
+    main_sessions = [s for s in sessions if not s.name.startswith('agent-')]
+    return sorted(main_sessions, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-def scan_for_planning_update(session_file: Path) -> Tuple[int, Optional[str]]:
+def parse_session_messages(session_file: Path) -> List[Dict]:
+    """Parse all messages from a session file, preserving order."""
+    messages = []
+    with open(session_file, 'r') as f:
+        for line_num, line in enumerate(f):
+            try:
+                data = json.loads(line)
+                data['_line_num'] = line_num
+                messages.append(data)
+            except json.JSONDecodeError:
+                pass
+    return messages
+
+
+def find_last_planning_update(messages: List[Dict]) -> Tuple[int, Optional[str]]:
     """
-    Quickly scan a session file for planning file updates.
-    Returns (line_number, filename) of last update, or (-1, None) if none found.
+    Find the last time a planning file was written/edited.
+    Returns (line_number, filename) or (-1, None) if not found.
     """
     last_update_line = -1
     last_update_file = None
 
-    try:
-        with open(session_file, 'r') as f:
-            for line_num, line in enumerate(f):
-                # Quick pre-filter
-                line_lower = line.lower()
-                if '"write"' not in line_lower and '"edit"' not in line_lower:
-                    continue
+    for msg in messages:
+        msg_type = msg.get('type')
 
-                try:
-                    entry = json.loads(line)
-                    if entry.get('type') != 'message':
-                        continue
-                    
-                    message = entry.get('message', {})
-                    if message.get('role') != 'assistant':
-                        continue
+        if msg_type == 'assistant':
+            content = msg.get('message', {}).get('content', [])
+            if isinstance(content, list):
+                for item in content:
+                    if item.get('type') == 'tool_use':
+                        tool_name = item.get('name', '')
+                        tool_input = item.get('input', {})
 
-                    content = message.get('content', [])
-                    if not isinstance(content, list):
-                        continue
-
-                    for item in content:
-                        if item.get('type') != 'toolCall':
-                            continue
-                        
-                        tool_name = item.get('name', '').lower()
-                        if tool_name not in ('write', 'edit'):
-                            continue
-
-                        args = item.get('arguments', {})
-                        # Pi tools usually use 'path'
-                        file_path = args.get('path', args.get('file_path', ''))
-                        
-                        for pf in PLANNING_FILES:
-                            if file_path.endswith(pf):
-                                last_update_line = line_num
-                                last_update_file = pf
-                                break
-                except json.JSONDecodeError:
-                    continue
-    except Exception:
-        pass
+                        if tool_name in ('Write', 'Edit'):
+                            file_path = tool_input.get('file_path', '')
+                            for pf in PLANNING_FILES:
+                                if file_path.endswith(pf):
+                                    last_update_line = msg['_line_num']
+                                    last_update_file = pf
 
     return last_update_line, last_update_file
 
 
-def extract_messages_from_session(session_file: Path, after_line: int = -1) -> List[Dict]:
-    """
-    Extract conversation messages from a session file.
-    If after_line >= 0, only extract messages after that line.
-    If after_line < 0, extract all messages.
-    """
+def extract_messages_after(messages: List[Dict], after_line: int) -> List[Dict]:
+    """Extract conversation messages after a certain line number."""
     result = []
-    
-    # Use short UUID for display
-    session_id = session_file.stem.split('_')[-1][:8]
+    for msg in messages:
+        if msg['_line_num'] <= after_line:
+            continue
 
-    try:
-        with open(session_file, 'r') as f:
-            for line_num, line in enumerate(f):
-                if after_line >= 0 and line_num <= after_line:
+        msg_type = msg.get('type')
+        is_meta = msg.get('isMeta', False)
+
+        if msg_type == 'user' and not is_meta:
+            content = msg.get('message', {}).get('content', '')
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and item.get('type') == 'text':
+                        content = item.get('text', '')
+                        break
+                else:
+                    content = ''
+
+            if content and isinstance(content, str):
+                if content.startswith(('<local-command', '<command-', '<task-notification')):
                     continue
+                if len(content) > 20:
+                    result.append({'role': 'user', 'content': content, 'line': msg['_line_num']})
 
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
+        elif msg_type == 'assistant':
+            msg_content = msg.get('message', {}).get('content', '')
+            text_content = ''
+            tool_uses = []
 
-                if entry.get('type') != 'message':
-                    continue
+            if isinstance(msg_content, str):
+                text_content = msg_content
+            elif isinstance(msg_content, list):
+                for item in msg_content:
+                    if item.get('type') == 'text':
+                        text_content = item.get('text', '')
+                    elif item.get('type') == 'tool_use':
+                        tool_name = item.get('name', '')
+                        tool_input = item.get('input', {})
+                        if tool_name == 'Edit':
+                            tool_uses.append(f"Edit: {tool_input.get('file_path', 'unknown')}")
+                        elif tool_name == 'Write':
+                            tool_uses.append(f"Write: {tool_input.get('file_path', 'unknown')}")
+                        elif tool_name == 'Bash':
+                            cmd = tool_input.get('command', '')[:80]
+                            tool_uses.append(f"Bash: {cmd}")
+                        else:
+                            tool_uses.append(f"{tool_name}")
 
-                message = entry.get('message', {})
-                role = message.get('role')
-                content_list = message.get('content', [])
-
-                if role == 'user':
-                    text_content = ""
-                    for item in content_list:
-                        if item.get('type') == 'text':
-                            text_content += item.get('text', '')
-                    
-                    if text_content:
-                        # Skip system/command messages if they look internal
-                        # But generally show user commands
-                        if len(text_content) > 0:
-                            result.append({
-                                'role': 'user',
-                                'content': text_content,
-                                'line': line_num,
-                                'session': session_id
-                            })
-
-                elif role == 'assistant':
-                    text_content = ''
-                    tool_uses = []
-
-                    for item in content_list:
-                        if item.get('type') == 'text':
-                            text_content += item.get('text', '')
-                        elif item.get('type') == 'toolCall':
-                            tool_name = item.get('name', '')
-                            args = item.get('arguments', {})
-                            
-                            if tool_name == 'edit':
-                                tool_uses.append(f"Edit: {args.get('path', 'unknown')}")
-                            elif tool_name == 'write':
-                                tool_uses.append(f"Write: {args.get('path', 'unknown')}")
-                            elif tool_name == 'bash':
-                                cmd = args.get('command', '')[:80]
-                                tool_uses.append(f"Bash: {cmd}")
-                            elif tool_name == 'read':
-                                tool_uses.append(f"Read: {args.get('path', 'unknown')}")
-                            else:
-                                tool_uses.append(f"{tool_name}")
-
-                    if text_content or tool_uses:
-                        result.append({
-                            'role': 'assistant',
-                            'content': text_content[:600] if text_content else '',
-                            'tools': tool_uses,
-                            'line': line_num,
-                            'session': session_id
-                        })
-    except Exception:
-        pass
+            if text_content or tool_uses:
+                result.append({
+                    'role': 'assistant',
+                    'content': text_content[:600] if text_content else '',
+                    'tools': tool_uses,
+                    'line': msg['_line_num']
+                })
 
     return result
 
@@ -192,88 +142,58 @@ def main():
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     project_dir = get_project_dir(project_path)
 
+    # Check if planning files exist (indicates active task)
+    has_planning_files = any(
+        Path(project_path, f).exists() for f in PLANNING_FILES
+    )
+
     if not project_dir.exists():
-        # print(f"Session directory not found: {project_dir}")
+        # No previous sessions, nothing to catch up on
         return
 
     sessions = get_sessions_sorted(project_dir)
-    if len(sessions) < 2:
+    if len(sessions) < 1:
         return
 
-    # Skip the current session (most recently modified = index 0)
-    previous_sessions = sessions[1:]
-
-    # Find the most recent planning file update across ALL previous sessions
-    # Sessions are sorted newest first, so we scan in order
-    update_session = None
-    update_line = -1
-    update_file = None
-    update_session_idx = -1
-
-    for idx, session in enumerate(previous_sessions):
-        line, filename = scan_for_planning_update(session)
-        if line >= 0:
-            update_session = session
-            update_line = line
-            update_file = filename
-            update_session_idx = idx
+    # Find a substantial previous session
+    target_session = None
+    for session in sessions:
+        if session.stat().st_size > 5000:
+            target_session = session
             break
 
-    if not update_session:
-        # No planning file updates found in any previous session
+    if not target_session:
         return
 
-    # Collect ALL messages from the update point forward, across all sessions
-    all_messages = []
+    messages = parse_session_messages(target_session)
+    last_update_line, last_update_file = find_last_planning_update(messages)
 
-    # 1. Get messages from the session with the update (after the update line)
-    messages_from_update_session = extract_messages_from_session(update_session, after_line=update_line)
-    all_messages.extend(messages_from_update_session)
+    # Only output if there's unsynced content
+    if last_update_line < 0:
+        messages_after = extract_messages_after(messages, len(messages) - 30)
+    else:
+        messages_after = extract_messages_after(messages, last_update_line)
 
-    # 2. Get ALL messages from sessions between update_session and current
-    # These are sessions[1:update_session_idx] (newer than update_session)
-    intermediate_sessions = previous_sessions[:update_session_idx]
-
-    # Process from oldest to newest for correct chronological order
-    for session in reversed(intermediate_sessions):
-        messages = extract_messages_from_session(session, after_line=-1)  # Get all messages
-        all_messages.extend(messages)
-
-    if not all_messages:
+    if not messages_after:
         return
 
     # Output catchup report
     print("\n[planning-with-files] SESSION CATCHUP DETECTED")
-    print(f"Last planning update: {update_file} in session {update_session.stem.split('_')[-1][:8]}...")
+    print(f"Previous session: {target_session.stem}")
 
-    sessions_covered = update_session_idx + 1
-    if sessions_covered > 1:
-        print(f"Scanning {sessions_covered} sessions for unsynced context")
-
-    print(f"Unsynced messages: {len(all_messages)}")
+    if last_update_line >= 0:
+        print(f"Last planning update: {last_update_file} at message #{last_update_line}")
+        print(f"Unsynced messages: {len(messages_after)}")
+    else:
+        print("No planning file updates found in previous session")
 
     print("\n--- UNSYNCED CONTEXT ---")
-
-    # Show up to 100 messages
-    MAX_MESSAGES = 100
-    if len(all_messages) > MAX_MESSAGES:
-        print(f"(Showing last {MAX_MESSAGES} of {len(all_messages)} messages)\n")
-        messages_to_show = all_messages[-MAX_MESSAGES:]
-    else:
-        messages_to_show = all_messages
-
-    current_session = None
-    for msg in messages_to_show:
-        # Show session marker when it changes
-        if msg.get('session') != current_session:
-            current_session = msg.get('session')
-            print(f"\n[Session: {current_session}...]")
-
+    for msg in messages_after[-15:]:  # Last 15 messages
         if msg['role'] == 'user':
             print(f"USER: {msg['content'][:300]}")
         else:
             if msg.get('content'):
-                print(f"PI: {msg['content'][:300]}")
+                print(f"CLAUDE: {msg['content'][:300]}")
             if msg.get('tools'):
                 print(f"  Tools: {', '.join(msg['tools'][:4])}")
 

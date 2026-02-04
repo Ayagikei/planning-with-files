@@ -188,7 +188,7 @@ Success!
 
 ## The Read-Before-Decide Pattern
 
-Always read your plan before major decisions:
+**Always read your plan before major decisions:**
 
 ```
 [Many tool calls have happened...]

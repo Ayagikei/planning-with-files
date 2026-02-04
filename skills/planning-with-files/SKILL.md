@@ -102,14 +102,6 @@ Before ANY complex task:
 
 > **Note:** Planning files go in the project’s docs/planning location (per project conventions), not the repo root and not the skill installation folder.
 
-## If You Must Ask for Execution Mode (Codex)
-
-Use this ordering to keep a safe default and include the "current session" option:
-
-1. 当前会话继续执行 (Recommended)
-2. 子代理驱动（本会话内逐任务执行）
-3. 并行会话（另开执行 plans）
-
 ## Example
 
 Project convention: `docs/releases/1.6.0/feature-reminders/`

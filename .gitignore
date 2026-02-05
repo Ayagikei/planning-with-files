@@ -21,6 +21,12 @@ notes.md
 !examples/**/*.md
 !**/templates/*.md
 
+# ClawdHub publish folder (managed separately)
+clawdhub-publish/
+
+# Claude session files
+.claude/
+
 # Keep the skill folder clean
 *.log
 *.tmp

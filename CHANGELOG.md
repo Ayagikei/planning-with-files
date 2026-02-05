@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.14.0] - 2026-02-04
+
+### Added
+
+- **Pi Agent Support** (PR #67 by @ttttmr)
+  - Full Pi Agent (pi.dev) integration
+  - Created `.pi/skills/planning-with-files/` skill bundle
+  - Added `package.json` for NPM installation (`pi install npm:pi-planning-with-files`)
+  - Full templates, scripts, and references included
+  - Cross-platform support (macOS, Linux, Windows)
+  - Added `docs/pi-agent.md` installation guide
+  - Added Pi Agent badge to README
+  - Note: Hooks are Claude Code-specific and not supported in Pi Agent
+
+### Fixed
+
+- **Codex Skill Path References** (PR #66 by @codelyc)
+  - Replaced broken `CLAUDE_PLUGIN_ROOT` references with correct Codex paths (`~/.codex/skills/planning-with-files/`)
+  - Added missing template files to `.codex/skills/planning-with-files/templates/`
+
+### Changed
+
+- **OpenClaw Docs Update** (PR #65 by @AZLabsAI, fixes #64)
+  - Renamed `docs/moltbot.md` to `docs/openclaw.md`
+  - Updated all paths from `~/.clawdbot/` to `~/.openclaw/`
+  - Updated CLI commands from `moltbot` to `openclaw`
+  - Updated website link from `molt.bot` to `openclaw.ai`
+- Updated README: Moltbot badge and references updated to OpenClaw
+- Version badge updated to v2.14.0
+
+### Thanks
+
+- @ttttmr for Pi Agent integration (PR #67)
+- @codelyc for Codex path fix (PR #66)
+- @AZLabsAI for OpenClaw docs update (PR #65)
+
+---
+
 ## [2.11.0] - 2026-01-26
 
 ### Added

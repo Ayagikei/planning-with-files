@@ -4,7 +4,7 @@ version: "2.10.0"
 description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls.
 homepage: https://github.com/OthmanAdi/planning-with-files
 user-invocable: true
-metadata: {"moltbot":{"os":["darwin","linux","win32"]}}
+metadata: {"openclaw":{"os":["darwin","linux","win32"]}}
 ---
 
 # Planning with Files

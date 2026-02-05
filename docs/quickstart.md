@@ -4,23 +4,24 @@ Follow these 5 steps to use the planning-with-files pattern.
 
 ---
 
-## Step 1: Create Your Planning Files
+## Step 1: Invoke the Skill and Describe Your Task
 
 **When:** Before starting any work on a complex task
 
-**Action:** Create all three files using the templates:
+**Action:** Invoke the skill (e.g., `/plan` or `/planning-with-files:start`) and describe what you want to accomplish. The AI will create all three planning files in your project directory:
 
+- `task_plan.md` — Phases and progress tracking
+- `findings.md` — Research and discoveries
+- `progress.md` — Session log and test results
+
+If you invoke the skill without a task description, the AI will ask you what you'd like to plan.
+
+**Manual alternative:** If you prefer to create files yourself:
 ```bash
-# Option 1: Use the init script (if available)
+# Use the init script
 ./scripts/init-session.sh
-
-# Option 2: Copy templates manually
-cp templates/task_plan.md task_plan.md
-cp templates/findings.md findings.md
-cp templates/progress.md progress.md
+# Then fill in the Goal section in task_plan.md
 ```
-
-**Update:** Fill in the Goal section in `task_plan.md` with your task description.
 
 ---
 

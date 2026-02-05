@@ -18,10 +18,11 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 [![Cursor Skills](https://img.shields.io/badge/Cursor-Skills-purple)](https://docs.cursor.com/context/skills)
 [![Kilocode Skills](https://img.shields.io/badge/Kilocode-Skills-orange)](https://kilo.ai/docs/agent-behavior/skills)
 [![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-Skills-4285F4)](https://geminicli.com/docs/cli/skills/)
-[![Moltbot](https://img.shields.io/badge/Moltbot-Skills-FF6B6B)](https://docs.molt.bot/tools/skills)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Skills-FF6B6B)](https://openclaw.ai)
 [![Kiro](https://img.shields.io/badge/Kiro-Steering-00D4AA)](https://kiro.dev/docs/cli/steering/)
 [![AdaL CLI](https://img.shields.io/badge/AdaL%20CLI-Skills-9B59B6)](https://docs.sylph.ai/features/plugins-and-skills)
-[![Version](https://img.shields.io/badge/version-2.13.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
+[![Pi Agent](https://img.shields.io/badge/Pi%20Agent-Skills-FF4081)](https://pi.dev)
+[![Version](https://img.shields.io/badge/version-2.14.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
 [![SkillCheck Validated](https://img.shields.io/badge/SkillCheck-Validated-4c1)](https://getskillcheck.com)
 
 ## Fork Changes (Ayagikei/xxx)
@@ -32,9 +33,11 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 
 ## Quick Install
 
-```bash
-# Install the plugin
-claude plugins install OthmanAdi/planning-with-files
+In Claude Code, run:
+
+```
+/plugin marketplace add OthmanAdi/planning-with-files
+/plugin install planning-with-files@planning-with-files
 ```
 
 That's it! Now use one of these commands in Claude Code:
@@ -46,88 +49,17 @@ That's it! Now use one of these commands in Claude Code:
 
 **Alternative:** If you want `/planning-with-files` (without prefix), copy skills to your local folder:
 
+**macOS/Linux:**
 ```bash
-# Optional: Copy skills for /planning-with-files command
 cp -r ~/.claude/plugins/cache/planning-with-files/planning-with-files/*/skills/planning-with-files ~/.claude/skills/
 ```
 
 **Windows (PowerShell):**
 ```powershell
-# Install the plugin
-claude plugins install OthmanAdi/planning-with-files
-
-# Optional: Copy skills for /planning-with-files command
 Copy-Item -Recurse -Path "$env:USERPROFILE\.claude\plugins\cache\planning-with-files\planning-with-files\*\skills\planning-with-files" -Destination "$env:USERPROFILE\.claude\skills\"
 ```
 
 See [docs/installation.md](docs/installation.md) for all installation methods.
-
-## Supported IDEs
-
-| IDE | Status | Installation Guide | Format |
-|-----|--------|-------------------|--------|
-| Claude Code | ✅ Full Support | [Installation](docs/installation.md) | Plugin + SKILL.md |
-| Gemini CLI | ✅ Full Support | [Gemini Setup](docs/gemini.md) | Agent Skills |
-| Moltbot | ✅ Full Support | [Moltbot Setup](docs/moltbot.md) | Workspace/Local Skills |
-| Kiro | ✅ Full Support | [Kiro Setup](docs/kiro.md) | Steering Files |
-| Cursor | ✅ Full Support | [Cursor Setup](docs/cursor.md) | Skills |
-| Continue | ✅ Full Support | [Continue Setup](docs/continue.md) | Skills + Prompt files |
-| Kilocode | ✅ Full Support | [Kilocode Setup](docs/kilocode.md) | Skills |
-| OpenCode | ✅ Full Support | [OpenCode Setup](docs/opencode.md) | Personal/Project Skill |
-| Codex | ✅ Full Support | [Codex Setup](docs/codex.md) | Personal Skill |
-| FactoryAI Droid | ✅ Full Support | [Factory Setup](docs/factory.md) | Workspace/Personal Skill |
-| Antigravity | ✅ Full Support | [Antigravity Setup](docs/antigravity.md) | Workspace/Personal Skill |
-| CodeBuddy | ✅ Full Support | [CodeBuddy Setup](docs/codebuddy.md) | Workspace/Personal Skill |
-| AdaL CLI (Sylph AI) | ✅ Full Support | [AdaL Setup](docs/adal.md) | Personal/Project Skills |
-
-> **Note:** If your IDE uses the legacy Rules system instead of Skills, see the [`legacy-rules-support`](https://github.com/OthmanAdi/planning-with-files/tree/legacy-rules-support) branch.
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Installation Guide](docs/installation.md) | All installation methods (plugin, manual, Cursor, Windows) |
-| [Quick Start](docs/quickstart.md) | 5-step guide to using the pattern |
-| [Workflow Diagram](docs/workflow.md) | Visual diagram of how files and hooks interact |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
-| [Gemini CLI Setup](docs/gemini.md) | Google Gemini CLI integration guide |
-| [Moltbot Setup](docs/moltbot.md) | Moltbot integration guide |
-| [Kiro Setup](docs/kiro.md) | Kiro steering files integration |
-| [Cursor Setup](docs/cursor.md) | Cursor IDE-specific instructions |
-| [Continue Setup](docs/continue.md) | Continue integration guide (skills + slash prompt) |
-| [Windows Setup](docs/windows.md) | Windows-specific notes |
-| [Kilo Code Support](docs/kilocode.md) | Kilo Code integration guide |
-| [Codex Setup](docs/codex.md) | Codex IDE installation and usage |
-| [OpenCode Setup](docs/opencode.md) | OpenCode IDE installation, oh-my-opencode config |
-| [FactoryAI Droid Setup](docs/factory.md) | FactoryAI Droid integration guide |
-| [Antigravity Setup](docs/antigravity.md) | Antigravity IDE integration guide |
-| [CodeBuddy Setup](docs/codebuddy.md) | CodeBuddy IDE integration guide |
-| [AdaL CLI Setup](docs/adal.md) | AdaL CLI / Sylph AI integration guide |
-
-## Versions
-
-| Version | Features | Install |
-|---------|----------|---------|
-| **v2.13.0** (current) | Moltbot rebrand (formerly Clawd CLI) | `claude plugins install OthmanAdi/planning-with-files` |
-| **v2.12.0** | AdaL CLI / Sylph AI support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.11.0** | `/plan` command for easier autocomplete | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.10.0** | Kiro steering files support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.9.0** | Moltbot (formerly Clawd CLI) support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.8.0** | Continue IDE support, POSIX sh compatibility fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.7.1** | Dynamic Python detection fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.7.0** | Gemini CLI support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.6.0** | Start command (`/planning-with-files:start`), path resolution fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.5.0** | Fixed autocomplete - SKILL.md matches Anthropic format | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.3.0** | Codex & OpenCode IDE support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.2.2** | Restored skill activation language | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.2.1** | Session recovery after /clear, enhanced PreToolUse hook | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.2.0** | Kilo Code IDE support, Windows PowerShell support, OS-aware hooks | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.1.2** | Fix template cache issue (Issue #18) | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.1.0** | Claude Code v2.1 compatible, PostToolUse hook, user-invocable | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v2.0.x** | Hooks, templates, scripts | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
-| **v1.0.0** (legacy) | Core 3-file pattern | `git clone -b legacy` |
-
-See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Why This Skill?
 
@@ -164,62 +96,34 @@ Filesystem = Disk (persistent, unlimited)
 → Anything important gets written to disk.
 ```
 
+## The Manus Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| Filesystem as memory | Store in files, not context |
+| Attention manipulation | Re-read plan before decisions (hooks) |
+| Error persistence | Log failures in plan file |
+| Goal tracking | Checkboxes show progress |
+| Completion verification | Stop hook checks all phases |
+
 ## Usage
 
-Once installed, Claude will automatically:
+Once installed, the AI agent will:
 
-1. **Create `task_plan.md`** before starting complex tasks
-2. **Re-read plan** before major decisions (via PreToolUse hook)
-3. **Remind you** to update status after file writes (via PostToolUse hook)
-4. **Store findings** in `findings.md` instead of stuffing context
-5. **Log errors** for future reference
-6. **Verify completion** before stopping (via Stop hook)
+1. **Ask for your task** if no description is provided
+2. **Create `task_plan.md`, `findings.md`, and `progress.md`** in your project directory
+3. **Re-read plan** before major decisions (via PreToolUse hook)
+4. **Remind you** to update status after file writes (via PostToolUse hook)
+5. **Store findings** in `findings.md` instead of stuffing context
+6. **Log errors** for future reference
+7. **Verify completion** before stopping (via Stop hook)
 
-Or invoke manually:
+Invoke with:
 - `/planning-with-files:plan` - Type `/plan` to find in autocomplete (v2.11.0+)
 - `/planning-with-files:start` - Type `/planning` to find in autocomplete
 - `/planning-with-files` - Only if you copied skills to `~/.claude/skills/`
 
 See [docs/quickstart.md](docs/quickstart.md) for the full 5-step guide.
-
-## Session Recovery (NEW in v2.2.0)
-
-When your context window fills up and you run `/clear`, this skill automatically recovers unsynced work from your previous session.
-
-### Optimal Workflow
-
-For the best experience, we recommend:
-
-1. **Disable auto-compact** in Claude Code settings (use full context window)
-2. **Start a fresh session** in your project
-3. **Run `/planning-with-files`** when ready to work on a complex task
-4. **Work until context fills up** (Claude will warn you)
-5. **Run `/clear`** to start fresh
-6. **Run `/planning-with-files`** again — it will automatically recover where you left off
-
-### How Recovery Works
-
-When you invoke `/planning-with-files`, the skill:
-
-1. Checks for previous session data (stored in `~/.claude/projects/`)
-2. Finds the last time planning files were updated
-3. Extracts conversation that happened after (potentially lost context)
-4. Shows a catchup report so you can sync planning files
-
-This means even if context filled up before you could update your planning files, the skill will recover that context in your next session.
-
-### Disabling Auto-Compact
-
-To use the full context window without automatic compaction:
-
-```bash
-# In your Claude Code settings or .claude/settings.json
-{
-  "autoCompact": false
-}
-```
-
-This lets you maximize context usage before manually clearing with `/clear`.
 
 ## Key Rules
 
@@ -227,6 +131,19 @@ This lets you maximize context usage before manually clearing with `/clear`.
 2. **The 2-Action Rule** — Save findings after every 2 view/browser operations
 3. **Log ALL Errors** — They help avoid repetition
 4. **Never Repeat Failures** — Track attempts, mutate approach
+
+## When to Use
+
+**Use this pattern for:**
+- Multi-step tasks (3+ steps)
+- Research tasks
+- Building/creating projects
+- Tasks spanning many tool calls
+
+**Skip for:**
+- Simple questions
+- Single-file edits
+- Quick lookups
 
 ## File Structure
 
@@ -271,49 +188,23 @@ planning-with-files/
 ├── .opencode/               # OpenCode IDE skills
 │   └── skills/
 ├── .claude-plugin/          # Plugin manifest
-├── .cursor/                 # Cursor skills
+├── .cursor/                 # Cursor skills + hooks
+│   ├── hooks.json           # Hook configuration
+│   ├── hooks/               # Hook scripts (bash + PowerShell)
 │   └── skills/
 ├── .kilocode/               # Kilo Code skills
 │   └── skills/
+├── .openclaw/               # OpenClaw skills
+│   └── skills/
 ├── .adal/                   # AdaL CLI / Sylph AI skills
 │   └── skills/
+├── .pi/                     # Pi Agent skills
+│   └── skills/
+│       └── planning-with-files/
 ├── CHANGELOG.md
 ├── LICENSE
 └── README.md
 ```
-
-## The Manus Principles
-
-| Principle | Implementation |
-|-----------|----------------|
-| Filesystem as memory | Store in files, not context |
-| Attention manipulation | Re-read plan before decisions (hooks) |
-| Error persistence | Log failures in plan file |
-| Goal tracking | Checkboxes show progress |
-| Completion verification | Stop hook checks all phases |
-
-## When to Use
-
-**Use this pattern for:**
-- Multi-step tasks (3+ steps)
-- Research tasks
-- Building/creating projects
-- Tasks spanning many tool calls
-
-**Skip for:**
-- Simple questions
-- Single-file edits
-- Quick lookups
-
-## Kilo Code Support
-
-This skill also supports Kilo Code AI through the `.kilocode/rules/` directory.
-
-The [`.kilocode/rules/planning-with-files.md`](.kilocode/rules/planning-with-files.md) file contains all the planning guidelines formatted for Kilo Code's rules system, providing the same Manus-style planning workflow for Kilo Code users.
-
-**Windows users:** The skill now includes PowerShell scripts ([`init-session.ps1`](skills/planning-with-files/scripts/init-session.ps1) and [`check-complete.ps1`](skills/planning-with-files/scripts/check-complete.ps1)) for native Windows support.
-
-See [docs/kilocode.md](docs/kilocode.md) for detailed Kilo Code integration guide.
 
 ## Community Forks
 
@@ -321,8 +212,118 @@ See [docs/kilocode.md](docs/kilocode.md) for detailed Kilo Code integration guid
 |------|--------|----------|
 | [devis](https://github.com/st01cs/devis) | [@st01cs](https://github.com/st01cs) | Interview-first workflow, `/devis:intv` and `/devis:impl` commands, guaranteed activation |
 | [multi-manus-planning](https://github.com/kmichels/multi-manus-planning) | [@kmichels](https://github.com/kmichels) | Multi-project support, SessionStart git sync |
+| [plan-cascade](https://github.com/Taoidle/plan-cascade) | [@Taoidle](https://github.com/Taoidle) | Multi-level task orchestration, parallel execution, multi-agent collaboration |
 
 *Built something? Open an issue to get listed!*
+
+## Supported IDEs
+
+| IDE | Status | Installation Guide | Format |
+|-----|--------|-------------------|--------|
+| Claude Code | ✅ Full Support | [Installation](docs/installation.md) | Plugin + SKILL.md |
+| Gemini CLI | ✅ Full Support | [Gemini Setup](docs/gemini.md) | Agent Skills |
+| OpenClaw | ✅ Full Support | [OpenClaw Setup](docs/openclaw.md) | Workspace/Local Skills |
+| Kiro | ✅ Full Support | [Kiro Setup](docs/kiro.md) | Steering Files |
+| Cursor | ✅ Full Support | [Cursor Setup](docs/cursor.md) | Skills + Hooks |
+| Continue | ✅ Full Support | [Continue Setup](docs/continue.md) | Skills + Prompt files |
+| Kilocode | ✅ Full Support | [Kilocode Setup](docs/kilocode.md) | Skills |
+| OpenCode | ✅ Full Support | [OpenCode Setup](docs/opencode.md) | Personal/Project Skill |
+| Codex | ✅ Full Support | [Codex Setup](docs/codex.md) | Personal Skill |
+| FactoryAI Droid | ✅ Full Support | [Factory Setup](docs/factory.md) | Workspace/Personal Skill |
+| Antigravity | ✅ Full Support | [Antigravity Setup](docs/antigravity.md) | Workspace/Personal Skill |
+| CodeBuddy | ✅ Full Support | [CodeBuddy Setup](docs/codebuddy.md) | Workspace/Personal Skill |
+| AdaL CLI (Sylph AI) | ✅ Full Support | [AdaL Setup](docs/adal.md) | Personal/Project Skills |
+| Pi Agent | ✅ Full Support | [Pi Agent Setup](docs/pi-agent.md) | Agent Skills |
+
+> **Note:** If your IDE uses the legacy Rules system instead of Skills, see the [`legacy-rules-support`](https://github.com/OthmanAdi/planning-with-files/tree/legacy-rules-support) branch.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Installation Guide](docs/installation.md) | All installation methods (plugin, manual, Cursor, Windows) |
+| [Quick Start](docs/quickstart.md) | 5-step guide to using the pattern |
+| [Workflow Diagram](docs/workflow.md) | Visual diagram of how files and hooks interact |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
+| [Gemini CLI Setup](docs/gemini.md) | Google Gemini CLI integration guide |
+| [OpenClaw Setup](docs/openclaw.md) | OpenClaw integration guide |
+| [Kiro Setup](docs/kiro.md) | Kiro steering files integration |
+| [Cursor Setup](docs/cursor.md) | Cursor IDE-specific instructions |
+| [Continue Setup](docs/continue.md) | Continue integration guide (skills + slash prompt) |
+| [Windows Setup](docs/windows.md) | Windows-specific notes |
+| [Kilo Code Support](docs/kilocode.md) | Kilo Code integration guide |
+| [Codex Setup](docs/codex.md) | Codex IDE installation and usage |
+| [OpenCode Setup](docs/opencode.md) | OpenCode IDE installation, oh-my-opencode config |
+| [FactoryAI Droid Setup](docs/factory.md) | FactoryAI Droid integration guide |
+| [Antigravity Setup](docs/antigravity.md) | Antigravity IDE integration guide |
+| [CodeBuddy Setup](docs/codebuddy.md) | CodeBuddy IDE integration guide |
+| [AdaL CLI Setup](docs/adal.md) | AdaL CLI / Sylph AI integration guide |
+| [Pi Agent Setup](docs/pi-agent.md) | Pi Agent integration guide |
+
+## Session Recovery (NEW in v2.2.0)
+
+When your context window fills up and you run `/clear`, this skill automatically recovers unsynced work from your previous session.
+
+### Optimal Workflow
+
+For the best experience, we recommend:
+
+1. **Disable auto-compact** in Claude Code settings (use full context window)
+2. **Start a fresh session** in your project
+3. **Run `/planning-with-files`** when ready to work on a complex task
+4. **Work until context fills up** (Claude will warn you)
+5. **Run `/clear`** to start fresh
+6. **Run `/planning-with-files`** again — it will automatically recover where you left off
+
+### How Recovery Works
+
+When you invoke `/planning-with-files`, the skill:
+
+1. Checks for previous session data (stored in `~/.claude/projects/`)
+2. Finds the last time planning files were updated
+3. Extracts conversation that happened after (potentially lost context)
+4. Shows a catchup report so you can sync planning files
+
+This means even if context filled up before you could update your planning files, the skill will recover that context in your next session.
+
+### Disabling Auto-Compact
+
+To use the full context window without automatic compaction:
+
+```bash
+# In your Claude Code settings or .claude/settings.json
+{
+  "autoCompact": false
+}
+```
+
+This lets you maximize context usage before manually clearing with `/clear`.
+
+## Versions
+
+| Version | Features | Install |
+|---------|----------|---------|
+| **v2.14.0** (current) | Pi Agent support, OpenClaw docs update, Codex path fix | `/plugin install planning-with-files@planning-with-files` |
+| **v2.13.0** | Moltbot rebrand (formerly Clawd CLI) | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.12.0** | AdaL CLI / Sylph AI support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.11.0** | `/plan` command for easier autocomplete | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.10.0** | Kiro steering files support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.9.0** | Moltbot (formerly Clawd CLI) support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.8.0** | Continue IDE support, POSIX sh compatibility fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.7.1** | Dynamic Python detection fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.7.0** | Gemini CLI support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.6.0** | Start command (`/planning-with-files:start`), path resolution fix | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.5.0** | Fixed autocomplete - SKILL.md matches Anthropic format | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.3.0** | Codex & OpenCode IDE support | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.2.2** | Restored skill activation language | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.2.1** | Session recovery after /clear, enhanced PreToolUse hook | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.2.0** | Kilo Code IDE support, Windows PowerShell support, OS-aware hooks | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.1.2** | Fix template cache issue (Issue #18) | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.1.0** | Claude Code v2.1 compatible, PostToolUse hook, user-invocable | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v2.0.x** | Hooks, templates, scripts | See [releases](https://github.com/OthmanAdi/planning-with-files/releases) |
+| **v1.0.0** (legacy) | Core 3-file pattern | `git clone -b legacy` |
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Acknowledgments
 

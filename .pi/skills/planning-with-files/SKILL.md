@@ -1,77 +1,31 @@
 ---
-name: planning-with-files
-version: "2.10.0"
-description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls. Now with automatic session recovery after /clear.
-user-invocable: true
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-  - WebFetch
-  - WebSearch
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit|Bash|Read|Glob|Grep"
-      hooks:
-        - type: command
-          command: "cat task_plan.md 2>/dev/null | head -30 || true"
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "echo '[planning-with-files] File updated. If this completes a phase, update task_plan.md status.'"
-  Stop:
-    - hooks:
-        - type: command
-          command: |
-            SCRIPT_DIR="${CODEX_SKILL_ROOT:-$HOME/.codex/skills/planning-with-files}/scripts"
-
-            IS_WINDOWS=0
-            if [ "${OS-}" = "Windows_NT" ]; then
-              IS_WINDOWS=1
-            else
-              UNAME_S="$(uname -s 2>/dev/null || echo '')"
-              case "$UNAME_S" in
-                CYGWIN*|MINGW*|MSYS*) IS_WINDOWS=1 ;;
-              esac
-            fi
-
-            if [ "$IS_WINDOWS" -eq 1 ]; then
-              if command -v pwsh >/dev/null 2>&1; then
-                pwsh -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                sh "$SCRIPT_DIR/check-complete.sh"
-              else
-                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                sh "$SCRIPT_DIR/check-complete.sh"
-              fi
-            else
-              sh "$SCRIPT_DIR/check-complete.sh"
-            fi
+name: pi-planning-with-files
+description: Implements Manus-style file-based planning for complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when starting complex multi-step tasks, research projects, or any task requiring >5 tool calls
 ---
 
 # Planning with Files
 
 Work like Manus: Use persistent markdown files as your "working memory on disk."
 
-## FIRST: Check for Previous Session (v2.2.0)
+## FIRST: Check for Previous Session
 
 **Before starting work**, check for unsynced context from a previous session:
 
+> **Note:** The `scripts/` directory is inside this skill's installation folder.
+
 ```bash
-# Linux/macOS (auto-detects python3 or python)
-$(command -v python3 || command -v python) ~/.codex/skills/planning-with-files/scripts/session-catchup.py "$(pwd)"
+# Linux/macOS
+python scripts/session-catchup.py "$(pwd)"
 ```
 
 ```powershell
 # Windows PowerShell
-python "$env:USERPROFILE\.codex\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
+python scripts\session-catchup.py" (Get-Location)
 ```
 
-> Codex note: Codex does not require `session-catchup.py` and does not set `CLAUDE_PLUGIN_ROOT`. In Codex, explicitly skip this step and state that it is not needed.
+**If you cannot find the script:**
+Ask Pi to locate it for you:
+`Run the session-catchup.py script from the planning-with-files skill`
 
 If catchup report shows unsynced context:
 1. Run `git diff --stat` to see actual code changes
@@ -81,12 +35,12 @@ If catchup report shows unsynced context:
 
 ## Important: Where Files Go
 
-- **Templates** are in `~/.codex/skills/planning-with-files/templates/`
+- **Templates** are in `templates/` inside this skill
 - **Your planning files** go in **your project directory**
 
 | Location | What Goes There |
 |----------|-----------------|
-| Skill directory (`~/.codex/skills/planning-with-files/`) | Templates, scripts, reference docs |
+| Skill directory | Templates, scripts, reference docs |
 | Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Quick Start

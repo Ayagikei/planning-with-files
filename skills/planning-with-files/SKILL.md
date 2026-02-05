@@ -71,8 +71,6 @@ $(command -v python3 || command -v python) ${CLAUDE_PLUGIN_ROOT}/scripts/session
 & (Get-Command python -ErrorAction SilentlyContinue).Source "$env:USERPROFILE\.claude\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
 ```
 
-> Codex note: Codex does not require `session-catchup.py` and does not set `CLAUDE_PLUGIN_ROOT`. In Codex, explicitly skip this step and state that it is not needed.
-
 If catchup report shows unsynced context:
 1. Run `git diff --stat` to see actual code changes
 2. Read current planning files

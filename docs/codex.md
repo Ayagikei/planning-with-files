@@ -39,10 +39,6 @@ For complex tasks (3+ steps, research, projects):
 </IMPORTANT>
 ```
 
-## Codex Notes
-
-- Codex does not require `session-catchup.py` and does not set `CLAUDE_PLUGIN_ROOT`. In Codex, explicitly skip session-catchup and state that it is not needed.
-
 ## Verification
 
 ```bash

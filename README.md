@@ -300,6 +300,10 @@ planning-with-files/
 | [AdaL CLI Setup](docs/adal.md) | AdaL CLI / Sylph AI integration guide |
 | [Pi Agent Setup](docs/pi-agent.md) | Pi Agent integration guide |
 
+## Contributors
+
+- [@codelyc](https://github.com/codelyc) — OpenCode scripts support
+
 ## Acknowledgments
 
 - **Manus AI** — For pioneering context engineering patterns

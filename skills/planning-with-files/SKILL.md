@@ -27,7 +27,21 @@ hooks:
     - hooks:
         - type: command
           command: |
-            SCRIPT_DIR="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/planning-with-files}/scripts"
+            SKILL_ROOT="${CODEX_SKILL_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+            if [ -z "$SKILL_ROOT" ]; then
+              for CANDIDATE in \
+                "$HOME/.agents/skills/planning-with-files/skills/planning-with-files" \
+                "$HOME/.codex/skills/planning-with-files" \
+                "$HOME/.claude/plugins/planning-with-files" \
+                "$HOME/.claude/skills/planning-with-files"
+              do
+                if [ -f "$CANDIDATE/scripts/check-complete.sh" ] || [ -f "$CANDIDATE/scripts/check-complete.ps1" ]; then
+                  SKILL_ROOT="$CANDIDATE"
+                  break
+                fi
+              done
+            fi
+            SCRIPT_DIR="${SKILL_ROOT:-$HOME/.codex/skills/planning-with-files}/scripts"
 
             IS_WINDOWS=0
             if [ "${OS-}" = "Windows_NT" ]; then
@@ -63,12 +77,39 @@ Work like Manus: Use persistent markdown files as your "working memory on disk."
 
 ```bash
 # Linux/macOS
-$(command -v python3 || command -v python) ${CLAUDE_PLUGIN_ROOT}/scripts/session-catchup.py "$(pwd)"
+SKILL_ROOT="${CODEX_SKILL_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "$SKILL_ROOT" ]; then
+  for CANDIDATE in \
+    "$HOME/.agents/skills/planning-with-files/skills/planning-with-files" \
+    "$HOME/.codex/skills/planning-with-files" \
+    "$HOME/.claude/plugins/planning-with-files" \
+    "$HOME/.claude/skills/planning-with-files"
+  do
+    if [ -f "$CANDIDATE/scripts/session-catchup.py" ]; then
+      SKILL_ROOT="$CANDIDATE"
+      break
+    fi
+  done
+fi
+$(command -v python3 || command -v python) "${SKILL_ROOT:-$HOME/.codex/skills/planning-with-files}/scripts/session-catchup.py" "$(pwd)"
 ```
 
 ```powershell
 # Windows PowerShell
-& (Get-Command python -ErrorAction SilentlyContinue).Source "$env:USERPROFILE\.claude\skills\planning-with-files\scripts\session-catchup.py" (Get-Location)
+$skillRoot = if ($env:CODEX_SKILL_ROOT) { $env:CODEX_SKILL_ROOT } elseif ($env:CLAUDE_PLUGIN_ROOT) { $env:CLAUDE_PLUGIN_ROOT } else { "$env:USERPROFILE\.agents\skills\planning-with-files\skills\planning-with-files" }
+if (-not (Test-Path "$skillRoot\scripts\session-catchup.py")) {
+  foreach ($candidate in @(
+    "$env:USERPROFILE\.codex\skills\planning-with-files",
+    "$env:USERPROFILE\.claude\plugins\planning-with-files",
+    "$env:USERPROFILE\.claude\skills\planning-with-files"
+  )) {
+    if (Test-Path "$candidate\scripts\session-catchup.py") {
+      $skillRoot = $candidate
+      break
+    }
+  }
+}
+python "$skillRoot\scripts\session-catchup.py" (Get-Location)
 ```
 
 If catchup report shows unsynced context:
@@ -79,12 +120,12 @@ If catchup report shows unsynced context:
 
 ## Important: Where Files Go
 
-- **Templates** are in `${CLAUDE_PLUGIN_ROOT}/templates/`
+- **Templates** are in `<skill-root>/templates/` (`CODEX_SKILL_ROOT`/`CLAUDE_PLUGIN_ROOT` or auto-detected install path)
 - **Your planning files** go in the **project-specified docs directory** (never the repo root)
 
 | Location | What Goes There |
 |----------|-----------------|
-| Skill directory (`${CLAUDE_PLUGIN_ROOT}/`) | Templates, scripts, reference docs |
+| Skill directory (`<skill-root>/`) | Templates, scripts, reference docs |
 | Project docs directory | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Quick Start

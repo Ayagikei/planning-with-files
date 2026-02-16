@@ -6,6 +6,10 @@ Session-agnostic scanning: finds the most recent planning file update across
 ALL sessions, then collects all conversation from that point forward through
 all subsequent sessions until now.
 
+Supports multiple AI IDEs:
+- Claude Code (.claude/projects/)
+- OpenCode (.local/share/opencode/storage/)
+
 Usage: python3 session-catchup.py [project-path]
 """
 
@@ -18,7 +22,29 @@ from typing import List, Dict, Optional, Tuple
 PLANNING_FILES = ['task_plan.md', 'progress.md', 'findings.md']
 
 
-def get_project_dir(project_path: str) -> Path:
+def detect_ide() -> str:
+    """
+    Detect which IDE is being used based on environment and file structure.
+    Returns 'claude-code', 'opencode', or 'unknown'.
+    """
+    # Check for OpenCode environment
+    if os.environ.get('OPENCODE_DATA_DIR'):
+        return 'opencode'
+
+    # Check for Claude Code directory
+    claude_dir = Path.home() / '.claude'
+    if claude_dir.exists():
+        return 'claude-code'
+
+    # Check for OpenCode directory
+    opencode_dir = Path.home() / '.local' / 'share' / 'opencode'
+    if opencode_dir.exists():
+        return 'opencode'
+
+    return 'unknown'
+
+
+def get_project_dir_claude(project_path: str) -> Path:
     """Convert project path to Claude's storage path format."""
     sanitized = project_path.replace('/', '-')
     if not sanitized.startswith('-'):
@@ -27,11 +53,47 @@ def get_project_dir(project_path: str) -> Path:
     return Path.home() / '.claude' / 'projects' / sanitized
 
 
+def get_project_dir_opencode(project_path: str) -> Optional[Path]:
+    """
+    Get OpenCode session storage directory.
+    OpenCode uses: ~/.local/share/opencode/storage/session/{projectHash}/
+
+    Note: OpenCode's structure is different - this function returns the storage root.
+    Session discovery happens differently in OpenCode.
+    """
+    data_dir = os.environ.get('OPENCODE_DATA_DIR',
+                               str(Path.home() / '.local' / 'share' / 'opencode'))
+    storage_dir = Path(data_dir) / 'storage'
+
+    if not storage_dir.exists():
+        return None
+
+    return storage_dir
+
+
 def get_sessions_sorted(project_dir: Path) -> List[Path]:
     """Get all session files sorted by modification time (newest first)."""
     sessions = list(project_dir.glob('*.jsonl'))
     main_sessions = [s for s in sessions if not s.name.startswith('agent-')]
     return sorted(main_sessions, key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def get_sessions_sorted_opencode(storage_dir: Path) -> List[Path]:
+    """
+    Get all OpenCode session files sorted by modification time.
+    OpenCode stores sessions at: storage/session/{projectHash}/{sessionID}.json
+    """
+    session_dir = storage_dir / 'session'
+    if not session_dir.exists():
+        return []
+
+    sessions = []
+    for project_hash_dir in session_dir.iterdir():
+        if project_hash_dir.is_dir():
+            for session_file in project_hash_dir.glob('*.json'):
+                sessions.append(session_file)
+
+    return sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
 def get_session_first_timestamp(session_file: Path) -> Optional[str]:
@@ -181,7 +243,19 @@ def extract_messages_from_session(session_file: Path, after_line: int = -1) -> L
 
 def main():
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
-    project_dir = get_project_dir(project_path)
+
+    # Detect IDE
+    ide = detect_ide()
+
+    if ide == 'opencode':
+        print("\n[planning-with-files] OpenCode session catchup is not yet fully supported")
+        print("OpenCode uses a different session storage format (.json) than Claude Code (.jsonl)")
+        print("Session catchup requires parsing OpenCode's message storage structure.")
+        print("\nWorkaround: Manually read task_plan.md, progress.md, and findings.md to catch up.")
+        return
+
+    # Claude Code path
+    project_dir = get_project_dir_claude(project_path)
 
     if not project_dir.exists():
         return
@@ -233,7 +307,7 @@ def main():
         return
 
     # Output catchup report
-    print("\n[planning-with-files] SESSION CATCHUP DETECTED")
+    print(f"\n[planning-with-files] SESSION CATCHUP DETECTED (IDE: {ide})")
     print(f"Last planning update: {update_file} in session {update_session.stem[:8]}...")
 
     sessions_covered = update_session_idx + 1

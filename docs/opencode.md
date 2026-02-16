@@ -81,6 +81,19 @@ If the agent forgets the planning rules:
    - Use oh-my-opencode's native skill loading (recommended)
    - OR use superpowers' `use_skill` tool, but not both
 
+## Known Limitations
+
+### Session Catchup
+
+The `session-catchup.py` script currently has limited support for OpenCode due to different session storage formats:
+
+- **Claude Code**: Uses `.jsonl` files at `~/.claude/projects/`
+- **OpenCode**: Uses `.json` files at `~/.local/share/opencode/storage/session/`
+
+When you run `/clear` in OpenCode, session catchup will detect OpenCode and show a message. **Workaround**: Manually read `task_plan.md`, `progress.md`, and `findings.md` to catch up after clearing context.
+
+Full OpenCode session parsing support is planned for a future release.
+
 ## Verification
 
 **Global:**

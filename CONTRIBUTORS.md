@@ -59,7 +59,58 @@ These amazing people have contributed code, documentation, or significant improv
   - Created `docs/codebuddy.md` installation guide
   - **Impact:** Expands IDE support to CodeBuddy ecosystem
 
+- **[@lincolnwan](https://github.com/lincolnwan)** - [PR #80](https://github.com/OthmanAdi/planning-with-files/pull/80)
+  - Added native GitHub Copilot hooks integration using the early 2026 hooks system
+  - Created `.github/hooks/planning-with-files.json` with full hook scripts in `.github/hooks/scripts/`
+  - Full cross-platform support (bash + PowerShell) and `docs/copilot.md` installation guide
+  - **Impact:** Brought total supported platforms to 15, expanding the skill to the GitHub Copilot ecosystem
+
+- **[@ciberponk](https://github.com/ciberponk)** - [PR #77](https://github.com/OthmanAdi/planning-with-files/pull/77)
+  - Added isolated `.planning/{uuid}/` plan sessions with UUID generation and PLAN_ID pinning
+  - Enables parallel planning sessions in separate terminals without state collision
+  - Cross-platform scripts (bash + PowerShell) with full backward compatibility for single-session users
+  - **Impact:** Unlocks parallel planning workflows, shipped to experimental branch ahead of master
+
+- **[@ttttmr](https://github.com/ttttmr)** - [PR #67](https://github.com/OthmanAdi/planning-with-files/pull/67)
+  - Added Pi Agent support with full skill integration
+  - **Impact:** Expands the skill to the Pi Agent ecosystem
+
 ### Other Contributors
+
+- **[@popey](https://github.com/popey)** - [PR #83](https://github.com/OthmanAdi/planning-with-files/pull/83)
+  - Fixed `allowed-tools` YAML list (invalid per Anthropic skill spec, silently killing discoverability)
+  - Fixed `metadata.version` placement and added trigger terms for better skill matching
+  - Applied across the canonical SKILL.md file
+
+- **[@jonthebeef](https://github.com/jonthebeef)** - [PR #75](https://github.com/OthmanAdi/planning-with-files/pull/75)
+  - Added `/plan:status` command for quick planning progress display without reading through all planning files
+
+- **[@codelyc](https://github.com/codelyc)** - [PR #66](https://github.com/OthmanAdi/planning-with-files/pull/66), [PR #70](https://github.com/OthmanAdi/planning-with-files/pull/70), [PR #76](https://github.com/OthmanAdi/planning-with-files/pull/76)
+  - Fixed Codex skill path references and replaced CLAUDE_PLUGIN_ROOT with correct absolute paths (PR #66)
+  - Fixed CodeBuddy skill path references and environment variables (PR #70)
+  - Added OpenCode scripts for the planning-with-files skill (PR #76)
+
+- **[@Guozihong](https://github.com/Guozihong)** - [PR #51](https://github.com/OthmanAdi/planning-with-files/pull/51)
+  - Added `/planning-with-files:start` command, enabling skill activation without copying files manually
+
+- **[@fahmyelraie](https://github.com/fahmyelraie)** - [PR #49](https://github.com/OthmanAdi/planning-with-files/pull/49)
+  - Fixed Stop hook path resolution when CLAUDE_PLUGIN_ROOT is not set in the environment
+
+- **[@olgasafonova](https://github.com/olgasafonova)** - [PR #46](https://github.com/OthmanAdi/planning-with-files/pull/46)
+  - Added SkillCheck validation badge after running the skill through spec validation
+
+- **[@AZLabsAI](https://github.com/AZLabsAI)** - [PR #65](https://github.com/OthmanAdi/planning-with-files/pull/65)
+  - Updated OpenClaw docs to reflect the product rename from Moltbot, correcting all paths and CLI commands
+
+- **[@raykuo998](https://github.com/raykuo998)** - [PR #88](https://github.com/OthmanAdi/planning-with-files/pull/88), [PR #86](https://github.com/OthmanAdi/planning-with-files/pull/86)
+  - Fixed `check-complete.ps1` completely failing on PowerShell 5.1 due to special character parse errors in double-quoted strings; switched to single-quoted strings with concatenation across all 12 platform copies (PR #88)
+  - Fixed Stop hook YAML multiline command block failing under Git Bash on Windows; collapsed 25-line OS detection to single-line implicit platform fallback chain across all 7 SKILL.md variants (PR #86)
+
+- **[@gydx6](https://github.com/gydx6)** - [PR #79](https://github.com/OthmanAdi/planning-with-files/pull/79)
+  - Fixed session-catchup false positives in all 9 skill-distributed copies
+  - Added early return guards for non-planning projects
+  - Thorough bug report with root cause analysis
+  - **Impact:** Eliminates noise from false catchup reports
 
 - **[@tobrun](https://github.com/tobrun)** - [PR #3](https://github.com/OthmanAdi/planning-with-files/pull/3)
   - Early directory structure improvements
@@ -74,9 +125,18 @@ These amazing people have contributed code, documentation, or significant improv
   - Added `assets` field to ensure templates copy to cache
   - **Impact:** Resolved template path issues
 
+- **[@tt-a1i](https://github.com/tt-a1i)** - [PR #92](https://github.com/OthmanAdi/planning-with-files/pull/92), [PR #99](https://github.com/OthmanAdi/planning-with-files/pull/99), [PR #100](https://github.com/OthmanAdi/planning-with-files/pull/100)
+  - Fixed broken Advanced Topics links in Codex SKILL.md (PR #92)
+  - Fixed 5 consistency issues across docs: broken links in opencode.md and factory.md, stale `notes.md` references replaced with `findings.md` across all 16 IDE copies, OpenCode support label corrected in README, `--help` in sync-ide-folders.py no longer runs a sync (PR #99)
+  - Fixed Codex session-catchup silently scanning Claude session paths; now prints an explicit fallback message when running from Codex context (PR #100)
+  - **Impact:** Significant docs and tooling consistency sweep across the entire multi-IDE surface
+
 ## Community Forks
 
 These developers have created forks that extend the functionality:
+
+- **[@RioTheGreat-ai](https://github.com/RioTheGreat-ai)** - [agentfund-skill](https://github.com/RioTheGreat-ai/agentfund-skill)
+  - Crowdfunding platform for AI agents using milestone-based escrow on Base, built with planning-with-files
 
 - **[@kmichels](https://github.com/kmichels)** - [multi-manus-planning](https://github.com/kmichels/multi-manus-planning)
   - Multi-project support
@@ -86,6 +146,8 @@ These developers have created forks that extend the functionality:
 
 Thank you to everyone who reported issues, provided feedback, and helped test fixes:
 
+- [@msuadOf](https://github.com/msuadOf) - Issue #93 (TMPDIR environment fix for plugin install)
+- [@DorianZheng](https://github.com/DorianZheng) - Issue #84 (BoxLite sandbox integration proposal)
 - [@mtuwei](https://github.com/mtuwei) - Issue #32 (Windows hook error)
 - [@JianweiWangs](https://github.com/JianweiWangs) - Issue #31 (Skill activation)
 - [@tingles2233](https://github.com/tingles2233) - Issue #29 (Plugin update issues)
@@ -112,6 +174,6 @@ If you've contributed and don't see your name here, please open an issue! We wan
 
 ---
 
-**Total Contributors:** 11+ and growing!
+**Total Contributors:** 25+ and growing!
 
-*Last updated: January 27, 2026*
+*Last updated: March 4, 2026*

@@ -2,6 +2,199 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22.0] - 2026-03-06
+
+### Added
+
+- **Formal benchmark results** — skill evaluated using Anthropic's skill-creator framework
+  - 10 parallel subagents, 5 diverse task types, 30 objectively verifiable assertions
+  - with_skill: **96.7% pass rate** (29/30); without_skill: 6.7% (2/30) — delta: +90 percentage points
+  - 3 blind A/B comparisons: with_skill wins 3/3 (100%), avg score 10.0/10 vs 6.8/10
+  - Full methodology in [docs/evals.md](docs/evals.md)
+- **Technical article** — [docs/article.md](docs/article.md): full write-up of the security analysis, fix, and eval methodology
+- **README badges** — Benchmark (96.7% pass rate), A/B Verified (3/3 wins), Security Verified
+- **README Benchmark Results section** — key numbers visible at a glance
+
+### Changed
+
+- `marketplace.json` version corrected to track current release (was stuck at 2.0.0)
+
+## [2.21.0] - 2026-03-05
+
+### Security
+
+- **Remove `WebFetch` and `WebSearch` from `allowed-tools`** — fixes Gen Agent Trust Hub FAIL and reduces Snyk W011 risk score
+  - The planning-with-files skill is a file-management and planning skill; web access is not part of its core scope
+  - The PreToolUse hook re-reads `task_plan.md` before every tool call, creating an amplification vector when web-sourced content is written to plan files. Removing these tools from the skill's declared scope breaks the toxic flow
+  - Applied across all 7 IDE variants that declared `allowed-tools`: Claude Code, Cursor, Kilocode, CodeBuddy, Codex, OpenCode, Mastra Code
+- **Add Security Boundary section to SKILL.md** — explicit guidance that web/search results must go to `findings.md` only (not `task_plan.md`), and all external content must be treated as untrusted
+- **Add security note to examples.md** — the web research example now includes an inline comment reinforcing the trust boundary
+
+## [2.20.0] - 2026-03-04
+
+### Fixed
+
+- **Codex session-catchup silent failure** (PR #100 by @tt-a1i, fixes #94)
+  - `session-catchup.py` in the Codex variant was silently scanning `~/.claude/projects` even when running from a Codex context, where sessions live under `~/.codex/sessions` in a different format
+  - Now detects the Codex runtime from `__file__` path and prints a clear fallback message instead of a silent no-op
+
+- **Docs broken links** (PR #99 by @tt-a1i, fixes #95)
+  - `docs/opencode.md` linked to `.opencode/INSTALL.md` which does not exist — corrected to `docs/installation.md`
+  - `docs/factory.md` See Also links used `../skills/planning-with-files/` paths — corrected to `../.factory/skills/planning-with-files/`
+
+- **Examples used stale `notes.md` filename** (PR #99 by @tt-a1i, fixes #96)
+  - All `examples.md` files across 16 IDE copies referenced `notes.md` which was renamed to `findings.md` — updated consistently everywhere
+
+- **`sync-ide-folders.py --help` ran a sync instead of printing usage** (PR #99 by @tt-a1i, fixes #98)
+  - Replaced manual `sys.argv` parsing with `argparse` — `--help` now exits cleanly with usage information
+
+### Changed
+
+- **OpenCode README support label corrected** (PR #99 by @tt-a1i, fixes #97)
+  - Changed from `Full Support` to `Partial Support` with a note about session catchup limitations — aligns README with what `docs/opencode.md` actually says
+
+### Thanks
+
+- @tt-a1i for the full consistency sweep (PR #99, PR #100)
+
+---
+
+## [2.19.0] - 2026-03-04
+
+### Fixed
+
+- **Codex Advanced Topics broken links** (PR #92 by @tt-a1i, fixes #91)
+  - Corrected two dead links in `.codex/skills/planning-with-files/SKILL.md`
+  - `reference.md` → `references/reference.md`
+  - `examples.md` → `references/examples.md`
+
+### Thanks
+
+- @tt-a1i for identifying and fixing the broken Codex links (PR #92)
+
+---
+
+## [2.18.3] - 2026-02-28
+
+### Fixed
+
+- **Stop hook multiline YAML command fails under Git Bash on Windows** (PR #86 by @raykuo998)
+  - Root cause: YAML `command: |` multiline blocks are not reliably parsed by Git Bash on Windows. The shell received the first line (`SCRIPT_DIR=...`) as a command name rather than a variable assignment, crashing the hook before it could do anything.
+  - Replaced 25-line OS detection scripts with a single-line implicit platform fallback chain: `powershell.exe` first, `sh` as fallback. Applied to all 7 SKILL.md variants with Stop hooks.
+  - Added `-NoProfile` to PowerShell invocation for faster startup
+
+- **`check-complete.ps1` completely failing on PowerShell 5.1** (PR #88 by @raykuo998)
+  - Root cause: Special characters inside double-quoted `Write-Host` strings (`[`, `(`, em-dash) caused parse errors in Windows PowerShell 5.1
+  - Replaced double-quoted strings with single-quoted strings plus explicit concatenation for variable interpolation. Applied to all 12 platform copies.
+
+### Thanks
+
+- @raykuo998 for both Windows compatibility fixes (PR #86, PR #88)
+
+---
+
+## [2.18.2] - 2026-02-26
+
+### Fixed
+
+- **Mastra Code hooks were silently doing nothing**
+  - Root cause: Mastra Code reads hooks from `.mastracode/hooks.json`, not from SKILL.md frontmatter. The existing integration had hooks defined only in SKILL.md (Claude Code format), which Mastra Code ignores entirely. All three hooks (PreToolUse, PostToolUse, Stop) were non-functional.
+  - Added `.mastracode/hooks.json` with proper Mastra Code format including `matcher`, `timeout`, and `description` fields
+  - Fixed `MASTRACODE_SKILL_ROOT` env var in SKILL.md Stop hook (variable does not exist in Mastra Code, replaced with `$HOME` fallback to local path)
+  - Bumped `.mastracode/skills/planning-with-files/SKILL.md` metadata version from 2.16.1 to 2.18.1
+  - Corrected `docs/mastra.md` to accurately describe hooks.json (removed false claim that Mastra Code uses the same hook system as Claude Code)
+  - Fixed personal installation instructions to include hooks.json copy step
+
+---
+
+## [2.18.1] - 2026-02-26
+
+### Fixed
+
+- **Copilot hooks garbled characters — still broken after v2.16.1** (Issue #82, confirmed by @Hexiaopi)
+  - Root cause: `Get-Content` in all PS1 scripts had no `-Encoding` parameter — PowerShell 5.x reads files using the system ANSI code page (Windows-1252) by default, corrupting any non-ASCII character in `task_plan.md` or `SKILL.md` before it reaches the output pipe. The v2.16.1 fix was correct but fixed only the output side, not the read side.
+  - Secondary fix: `[System.Text.Encoding]::UTF8` returns UTF-8 with BOM — replaced with `[System.Text.UTF8Encoding]::new($false)` (UTF-8 without BOM) in all four PS1 scripts to prevent JSON parsers from receiving a stray `0xEF 0xBB 0xBF` preamble
+  - Fixed files: `pre-tool-use.ps1`, `session-start.ps1`, `agent-stop.ps1`, `post-tool-use.ps1`
+  - Bash scripts were already correct from v2.16.1
+
+### Thanks
+
+- @Hexiaopi for confirming the issue persisted after v2.16.1 (Issue #82)
+
+---
+
+## [2.18.0] - 2026-02-26
+
+### Added
+
+- **BoxLite sandbox runtime integration** (Issue #84 by @DorianZheng)
+  - New `docs/boxlite.md` guide for running planning-with-files inside BoxLite micro-VM sandboxes via ClaudeBox
+  - New `examples/boxlite/quickstart.py` — working Python example using ClaudeBox's Skill API to inject planning-with-files into a VM
+  - New `examples/boxlite/README.md` — example context and requirements
+  - README: new "Sandbox Runtimes" section (BoxLite is infrastructure, not an IDE — kept separate from the 16-platform IDE table)
+  - README: BoxLite badge and Documentation table entry added
+  - BoxLite loads via ClaudeBox (`pip install claudebox`) using its Python Skill object — no `.boxlite/` folder needed
+
+### Thanks
+
+- @DorianZheng for the BoxLite integration proposal (Issue #84)
+
+---
+
+## [2.17.0] - 2026-02-25
+
+### Added
+
+- **Mastra Code support** — new `.mastracode/skills/planning-with-files/` integration with native hooks (PreToolUse, PostToolUse, Stop), full scripts, templates, and installation guide (platform #16)
+
+### Fixed
+
+- **Skill metadata spec compliance** — applied PR #83 fixes across all 12 IDE-specific SKILL.md files:
+  - `allowed-tools` YAML list → comma-separated string (Codex, Cursor, Kilocode, CodeBuddy, OpenCode)
+  - `version` moved from top-level to `metadata.version` across all applicable files
+  - Description updated with trigger terms ("plan out", "break down", "organize", "track progress") in all IDEs
+  - Version bumped to 2.16.1 everywhere, including canonical `skills/planning-with-files/SKILL.md`
+  - OpenClaw inline JSON metadata expanded to proper block YAML
+
+### Thanks
+
+- @popey for the PR #83 spec fixes that identified the issues
+
+---
+
+## [2.16.1] - 2026-02-25
+
+### Fixed
+
+- **Copilot hooks garbled characters on Windows** (Issue #82, reported by @Hexiaopi)
+  - PowerShell scripts now set `$OutputEncoding` and `[Console]::OutputEncoding` to UTF-8 before any output — fixes garbled diamond characters (◆) caused by PowerShell 5.x defaulting to UTF-16LE stdout
+  - Bash scripts now use `json.dumps(..., ensure_ascii=False)` — preserves UTF-8 characters (emojis, accented letters, CJK) in `task_plan.md` instead of converting them to raw `XXXX` escape sequences
+
+### Thanks
+
+- @Hexiaopi for reporting the garbled characters issue (Issue #82)
+
+---
+
+## [2.16.0] - 2026-02-22
+
+### Added
+
+- **GitHub Copilot Support** (PR #80 by @lincolnwan)
+  - Native GitHub Copilot hooks integration (early 2026 hooks feature)
+  - Created `.github/hooks/planning-with-files.json` configuration
+  - Added full hook scripts in `.github/hooks/scripts/`
+  - Cross-platform support (bash + PowerShell)
+  - Added `docs/copilot.md` installation guide
+  - Added GitHub Copilot badge to README
+  - This brings total supported platforms to 15
+
+### Thanks
+
+- @lincolnwan for GitHub Copilot hooks support (PR #80)
+
+---
+
 ## [2.14.0] - 2026-02-04
 
 ### Added

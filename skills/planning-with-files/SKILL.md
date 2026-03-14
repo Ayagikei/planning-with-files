@@ -1,64 +1,9 @@
 ---
 name: planning-with-files
-version: "2.4.1"
-description: Implements Manus-style file-based planning for complex multi-step work that needs persistent on-disk planning artifacts. Creates task_plan.md, findings.md, and progress.md, supports automatic session recovery after /clear, and keeps planning files in the project-specified docs directory.
-user-invocable: true
+description: Use when planning, breaking down, or tracking a complex multi-step task that needs persistent on-disk working memory, recovery after /clear or context resets, and planning files stored in the project's docs/planning directory.
 allowed-tools: "Read, Write, Edit, Bash, Glob, Grep"
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit|Bash|Read|Glob|Grep"
-      hooks:
-        - type: command
-          command: "cat task_plan.md 2>/dev/null | head -30 || true"
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "echo '[planning-with-files] File updated. If this completes a phase, update task_plan.md status.'"
-  Stop:
-    - hooks:
-        - type: command
-          command: |
-            SKILL_ROOT="${CODEX_SKILL_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
-            if [ -z "$SKILL_ROOT" ]; then
-              for CANDIDATE in \
-                "$HOME/.agents/skills/planning-with-files/skills/planning-with-files" \
-                "$HOME/.codex/skills/planning-with-files" \
-                "$HOME/.claude/plugins/planning-with-files" \
-                "$HOME/.claude/skills/planning-with-files"
-              do
-                if [ -f "$CANDIDATE/scripts/check-complete.sh" ] || [ -f "$CANDIDATE/scripts/check-complete.ps1" ]; then
-                  SKILL_ROOT="$CANDIDATE"
-                  break
-                fi
-              done
-            fi
-            SCRIPT_DIR="${SKILL_ROOT:-$HOME/.codex/skills/planning-with-files}/scripts"
-
-            IS_WINDOWS=0
-            if [ "${OS-}" = "Windows_NT" ]; then
-              IS_WINDOWS=1
-            else
-              UNAME_S="$(uname -s 2>/dev/null || echo '')"
-              case "$UNAME_S" in
-                CYGWIN*|MINGW*|MSYS*) IS_WINDOWS=1 ;;
-              esac
-            fi
-
-            if [ "$IS_WINDOWS" -eq 1 ]; then
-              if command -v pwsh >/dev/null 2>&1; then
-                pwsh -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                sh "$SCRIPT_DIR/check-complete.sh"
-              else
-                powershell -ExecutionPolicy Bypass -File "$SCRIPT_DIR/check-complete.ps1" 2>/dev/null ||
-                sh "$SCRIPT_DIR/check-complete.sh"
-              fi
-            else
-              sh "$SCRIPT_DIR/check-complete.sh"
-            fi
 metadata:
-  version: "2.21.0"
+  version: "2.22.0"
 ---
 
 # Planning with Files

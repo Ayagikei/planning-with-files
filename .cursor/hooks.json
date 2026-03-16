@@ -1,6 +1,12 @@
 {
   "version": 1,
   "hooks": {
+    "userPromptSubmit": [
+      {
+        "command": ".cursor/hooks/user-prompt-submit.sh",
+        "timeout": 5
+      }
+    ],
     "preToolUse": [
       {
         "command": ".cursor/hooks/pre-tool-use.sh",

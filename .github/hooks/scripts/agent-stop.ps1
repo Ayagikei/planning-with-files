@@ -33,11 +33,18 @@ if ($COMPLETE -eq 0 -and $IN_PROGRESS -eq 0 -and $PENDING -eq 0) {
 }
 
 if ($COMPLETE -eq $TOTAL -and $TOTAL -gt 0) {
-    Write-Output '{}'
+    $msg = "[planning-with-files] ALL PHASES COMPLETE ($COMPLETE/$TOTAL). If the user has additional work, add new phases to task_plan.md before starting."
+    $output = @{
+        hookSpecificOutput = @{
+            hookEventName = "AgentStop"
+            additionalContext = $msg
+        }
+    }
+    $output | ConvertTo-Json -Depth 3 -Compress
     exit 0
 }
 
-$msg = "[planning-with-files] Task incomplete ($COMPLETE/$TOTAL phases done). Read task_plan.md and continue working on the remaining phases."
+$msg = "[planning-with-files] Task incomplete ($COMPLETE/$TOTAL phases done). Update progress.md, then read task_plan.md and continue working on the remaining phases."
 $output = @{
     hookSpecificOutput = @{
         hookEventName = "AgentStop"

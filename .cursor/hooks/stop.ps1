@@ -26,8 +26,9 @@ if ($COMPLETE -eq 0 -and $IN_PROGRESS -eq 0 -and $PENDING -eq 0) {
 }
 
 if ($COMPLETE -eq $TOTAL -and $TOTAL -gt 0) {
+    Write-Host "{`"followup_message`": `"[planning-with-files] ALL PHASES COMPLETE ($COMPLETE/$TOTAL). If the user has additional work, add new phases to task_plan.md before starting.`"}"
     exit 0
 } else {
-    Write-Host "{`"followup_message`": `"[planning-with-files] Task incomplete ($COMPLETE/$TOTAL phases done). Read task_plan.md and continue working on the remaining phases.`"}"
+    Write-Host "{`"followup_message`": `"[planning-with-files] Task incomplete ($COMPLETE/$TOTAL phases done). Update progress.md, then read task_plan.md and continue working on the remaining phases.`"}"
     exit 0
 }

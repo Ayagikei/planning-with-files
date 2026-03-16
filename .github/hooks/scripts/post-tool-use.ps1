@@ -10,7 +10,7 @@ $InputData = [Console]::In.ReadToEnd()
 $output = @{
     hookSpecificOutput = @{
         hookEventName = "PostToolUse"
-        additionalContext = "[planning-with-files] File updated. If this completes a phase, update task_plan.md status."
+        additionalContext = "[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status."
     }
 }
 $output | ConvertTo-Json -Depth 3 -Compress

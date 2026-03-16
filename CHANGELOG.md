@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.23.0] - 2026-03-16
+
+### Fixed
+
+- **Session catchup not working after `/clear`** (Issue #106 by @tony-stark-eth)
+  - Root cause: No hook fired on session start to remind the agent about existing planning files. After `/clear`, the agent started fresh with no awareness of the active plan.
+  - Added `UserPromptSubmit` hook across all 7 IDE SKILL.md files. When `task_plan.md` exists, the hook injects a directive to read all three planning files before proceeding. This fires on every user message, ensuring the agent always knows about active plans even after `/clear` or context compaction.
+  - Strengthened SKILL.md "FIRST" section: now explicitly says to read all three files immediately, not just run session catchup.
+
+- **Progress not updating consistently** (Issue #106)
+  - Root cause: `PostToolUse` hook message only mentioned `task_plan.md`, never `progress.md`. The agent was never reminded to log what it did.
+  - Changed PostToolUse message across all 7 IDE SKILL.md files and both Copilot hook scripts to lead with "Update progress.md with what you just did."
+  - Added `if [ -f task_plan.md ]` guard so the reminder only fires when a plan is active.
+
+- **Post-plan additions not tracked** (Issue #106)
+  - Root cause: When all phases were complete, `check-complete` scripts reported "ALL PHASES COMPLETE" with no guidance about continuing. The agent had no reason to add new work to the plan.
+  - Updated `check-complete.sh` and `check-complete.ps1`: completion message now says "If the user has additional work, add new phases to task_plan.md before starting."
+  - Updated Copilot `agent-stop` scripts to output continuation context even when all phases are complete (previously returned empty `{}`).
+  - Added Critical Rule #7 ("Continue After Completion") to canonical SKILL.md body.
+
+### Changed
+
+- Version bumped to 2.23.0 across all 7 IDE SKILL.md files, plugin.json, and marketplace.json
+
+### Thanks
+
+- @tony-stark-eth for the detailed bug report covering all three symptoms (Issue #106)
+
+---
+
 ## [2.22.0] - 2026-03-06
 
 ### Added

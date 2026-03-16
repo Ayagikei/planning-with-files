@@ -1,4 +1,12 @@
 {
+  "UserPromptSubmit": [
+    {
+      "type": "command",
+      "command": "if [ -f task_plan.md ]; then echo '[planning-with-files] Active plan detected. If you have not read task_plan.md, progress.md, and findings.md in this conversation, read them now before proceeding.'; fi",
+      "timeout": 5000,
+      "description": "Remind agent about active plan on every user message for session recovery"
+    }
+  ],
   "PreToolUse": [
     {
       "type": "command",
@@ -11,9 +19,9 @@
   "PostToolUse": [
     {
       "type": "command",
-      "command": "echo '[planning-with-files] File updated. If this completes a phase, update task_plan.md status.'",
+      "command": "if [ -f task_plan.md ]; then echo '[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status.'; fi",
       "matcher": { "tool_name": "Write|Edit" },
-      "description": "Remind agent to update plan status after file changes"
+      "description": "Remind agent to update progress and plan status after file changes"
     }
   ],
   "Stop": [

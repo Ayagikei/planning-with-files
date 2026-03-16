@@ -1,6 +1,12 @@
 {
   "version": 1,
   "hooks": {
+    "userPromptSubmit": [
+      {
+        "command": "powershell -ExecutionPolicy Bypass -File .cursor/hooks/user-prompt-submit.ps1",
+        "timeout": 5
+      }
+    ],
     "preToolUse": [
       {
         "command": "powershell -ExecutionPolicy Bypass -File .cursor/hooks/pre-tool-use.ps1",

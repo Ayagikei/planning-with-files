@@ -161,9 +161,14 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g
 ```
 
-中文版 / Chinese:
+中文版 / Chinese (Simplified):
 ```bash
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zh -g
+```
+
+正體中文版 / Chinese (Traditional):
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zht -g
 ```
 
 Works with Claude Code, Cursor, Codex, Gemini CLI, and 40+ agents supporting the [Agent Skills](https://agentskills.io) spec.

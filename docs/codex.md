@@ -62,10 +62,14 @@ Add to your `~/.codex/AGENTS.md`:
 ## Planning with Files
 
 <IMPORTANT>
-For complex tasks (3+ steps, research, projects):
+Use planning-with-files selectively:
 1. Read skill: `cat ~/.codex/skills/planning-with-files/SKILL.md`
-2. Create task_plan.md, findings.md, progress.md in your project directory
-3. Follow 3-file pattern throughout the task
+2. Trivial tasks may skip it
+3. Large / long-running / research-heavy tasks should use it by default
+4. Medium-light tasks may enter it mid-execution if scope or uncertainty rises
+5. If the repo already has a docs/plans-style convention, use it
+6. If not, ask or keep temporary planning docs outside the repo when the repo type makes in-repo planning undesirable
+7. Follow the 3-file pattern only when the task truly needs persistent planning
 </IMPORTANT>
 ```
 

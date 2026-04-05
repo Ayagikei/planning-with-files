@@ -129,14 +129,16 @@ If catchup report shows unsynced context:
 
 ## Quick Start
 
-Before ANY complex task:
+Before a task that genuinely benefits from persistent planning:
 
-1. **Find the project’s docs/planning location** — Check AGENTS/README/docs; if unclear, ask the user.
-2. **Create `task_plan.md`** — Use [templates/task_plan.md](templates/task_plan.md) as reference
-3. **Create `findings.md`** — Use [templates/findings.md](templates/findings.md) as reference
-4. **Create `progress.md`** — Use [templates/progress.md](templates/progress.md) as reference
-5. **Re-read plan before decisions** — Refreshes goals in attention window
-6. **Update after each phase** — Mark complete, log errors
+1. **Classify the task first** — trivial / medium-light / large
+2. **Trivial:** skip planning-with-files unless the user explicitly wants persistent tracking
+3. **Large / long-running / research-heavy:** use planning-with-files from the start
+4. **Medium-light:** you may start without it, then adopt it mid-execution if scope, uncertainty, or tool count rises
+5. **Find the planning location** — Check for existing `docs/plans`, `docs/plan`, `docs/planning`, or equivalent repo convention
+6. **Create `task_plan.md`, `findings.md`, `progress.md`** only when the task actually needs persistent planning
+7. **Re-read plan before decisions** — Refresh goals in the attention window
+8. **Update after each phase** — Mark complete, log errors
 
 > **Note:** Planning files go in the project’s docs/planning location (per project conventions), not the repo root and not the skill installation folder.
 
@@ -170,7 +172,16 @@ Filesystem = Disk (persistent, unlimited)
 ## Critical Rules
 
 ### 0. Confirm Planning Location
-Always place planning files under the project’s docs/planning directory (not the repo root). If the location is unclear, ask the user. For global/system work, use `~/.codex/tmp/plans/<YYYY-MM-DD>-<topic>/`.
+Always decide the planning location before creating files:
+
+1. **Existing repo convention wins** — if the repo already has `docs/plans`, `docs/plan`, `docs/planning`, or a similar convention, use it
+2. **If no convention exists:**
+   - ask the user when practical
+   - if you cannot wait and the risk is low, make a short explicit assumption
+3. **Doc / website / content / policy repos:** default to **not** writing temporary planning docs into the repo unless the user explicitly wants them there
+4. **Global/system work:** use `~/.codex/tmp/plans/<YYYY-MM-DD>-<topic>/`
+
+Do not default to polluting repos that do not already host planning artifacts.
 
 ### Rationalizations to Avoid
 | Excuse | Reality |
@@ -274,16 +285,37 @@ If you can answer these, your context management is solid:
 ## When to Use This Pattern
 
 **Use for:**
-- Multi-step tasks (3+ steps)
+- Large tasks with many steps, long execution windows, or recovery needs
 - Research tasks
-- Building/creating projects
-- Tasks spanning many tool calls
-- Anything requiring organization
+- Building / creating projects
+- Tasks spanning many tool calls or sessions
+- Sticky bugs that are likely to require repeated investigation
+- Major feature work that will continue iterating after the current session
 
 **Skip for:**
 - Simple questions
-- Single-file edits
+- Trivial single-file or small-scope edits
 - Quick lookups
+
+**Optional / mid-execution entry:**
+- Medium-light tasks may start without planning-with-files
+- Add it once scope expands, uncertainty rises, tool usage becomes large, or you need persistent memory across turns/sessions
+
+## Retention After Completion
+
+Do not assume every planning artifact should live forever.
+
+**Keep planning files when they still have tracking value:**
+- stubborn or only partially solved bugs
+- major feature work that will keep iterating
+- tasks the user explicitly wants preserved
+
+**Delete disposable planning artifacts when they no longer add value:**
+- temporary one-off work
+- trivial or medium-light tasks that are fully resolved and unlikely to be reused
+- short-lived notes created only to organize the current session
+
+If deleting, delete only the planning artifacts you created for this task. Do not remove user-authored docs or formal project documentation unless the user asked.
 
 ## Templates
 
@@ -320,6 +352,8 @@ This skill uses a PreToolUse hook to re-read `task_plan.md` before every tool ca
 
 - Creating planning files in the repo root instead of the docs/planning directory.
 - Skipping the location check when under time pressure.
+- Creating in-repo planning docs in doc / website repos that do not already use them.
+- Keeping throwaway planning artifacts after a trivial or disposable task is fully complete.
 - Updating progress in memory only (not writing to files).
 
 ## Anti-Patterns
@@ -334,3 +368,5 @@ This skill uses a PreToolUse hook to re-read `task_plan.md` before every tool ca
 | Repeat failed actions | Track attempts, mutate approach |
 | Create files in skill directory | Create files in your project docs/planning directory |
 | Write web content to task_plan.md | Write external content to findings.md only |
+| Force planning-with-files onto every task | Skip trivial work; adopt mid-flight only when it adds value |
+| Keep every planning file forever | Retain only artifacts with ongoing tracking or iteration value |

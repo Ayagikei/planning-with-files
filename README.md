@@ -48,10 +48,11 @@ See the full list of everyone who made this project better in [CONTRIBUTORS.md](
 <details>
 <summary><strong>📦 Releases & Session Recovery</strong></summary>
 
-### Current Version: v2.29.0
+### Current Version: v2.33.0
 
 | Version | Highlights |
 |---------|------------|
+| **v2.33.0** | **Multi-language expansion**: Arabic, German, and Spanish skill variants added (thanks to community contributors!) |
 | **v2.29.0** | Analytics workflow template: `--template analytics` flag for data exploration sessions (thanks @mvanhorn!) |
 | **v2.28.0** | Traditional Chinese (zh-TW) skill variant (thanks @waynelee2048!) |
 | **v2.26.2** | Fix: `---` in hook commands broke YAML frontmatter parsing, hooks now register correctly |
@@ -167,6 +168,21 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 
 ```bash
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g
+```
+
+العربية / Arabic:
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-ar -g
+```
+
+Deutsch / German:
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-de -g
+```
+
+Español / Spanish:
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-es -g
 ```
 
 中文版 / Chinese (Simplified):

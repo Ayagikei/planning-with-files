@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-planning-with-files 会话恢复脚本
+سكريبت استئناف الجلسة لـ planning-with-files-ar
 
-分析上一个会话，查找在最后一次规划文件更新后未同步的上下文。
-设计为在 SessionStart 时运行。
+يحلل الجلسة السابقة للعثور على سياق غير متزامن بعد آخر
+تحديث لملف التخطيط. مصمم للعمل عند بداية الجلسة.
 
-用法：python3 session-catchup.py [项目路径]
+الاستخدام: python3 session-catchup.py [مسار-المشروع]
 """
 
 import json
@@ -409,29 +409,29 @@ def main():
         return
 
     # Output catchup report
-    print("\n[planning-with-files] 检测到会话恢复")
-    print(f"上一个会话：{target_session.stem}")
-    print(f"运行环境：{runtime_name}")
+    print("\n[planning-with-files-ar] تم اكتشاف جلسة سابقة غير متزامنة")
+    print(f"الجلسة السابقة: {target_session.stem}")
+    print(f"بيئة التشغيل: {runtime_name}")
 
-    print(f"最后规划更新：{last_update_file} at message #{last_update_line}")
-    print(f"未同步消息：{len(messages_after)}")
+    print(f"آخر تحديث للتخطيط: {last_update_file} at message #{last_update_line}")
+    print(f"الرسائل غير المتزامنة: {len(messages_after)}")
 
-    print("\n--- 未同步的上下文 ---")
+    print("\n--- سياق غير متزامن ---")
     assistant_label = 'CODEX' if runtime_name == 'codex' else 'CLAUDE'
-    for msg in messages_after[-15:]:
+    for msg in messages_after[-15:]:  # Last 15 messages
         if msg['role'] == 'user':
-            print(f"用户：{msg['content'][:300]}")
+            print(f"المستخدم: {msg['content'][:300]}")
         else:
             if msg.get('content'):
                 print(f"{assistant_label}: {msg['content'][:300]}")
             if msg.get('tools'):
-                print(f"  工具：{', '.join(msg['tools'][:4])}")
+                print(f"  الأدوات: {', '.join(msg['tools'][:4])}")
 
-    print("\n--- 建议 ---")
-    print("1. 运行：git diff --stat")
-    print("2. 读取：task_plan.md、progress.md、findings.md")
-    print("3. 根据上述上下文更新规划文件")
-    print("4. 继续执行任务")
+    print("\n--- التوصيات ---")
+    print("1. نفّذ: git diff --stat")
+    print("2. اقرأ: task_plan.md و progress.md و findings.md")
+    print("3. حدّث ملفات التخطيط بناءً على السياق أعلاه")
+    print("4. تابع المهمة")
 
 
 if __name__ == '__main__':

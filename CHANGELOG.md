@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.33.0] - 2026-04-09
+
+### Added
+
+- **Multi-language expansion** — New skill variants for international users:
+  - Arabic (`planning-with-files-ar`) - Full Arabic localization with proper RTL support
+  - German (`planning-with-files-de`) - Complete German localization  
+  - Spanish (`planning-with-files-es`) - Comprehensive Spanish localization
+  - Enhanced Simplified Chinese (`planning-with-files-zh`) - Fully localized scripts and templates
+  - Enhanced Traditional Chinese (`planning-with-files-zht`) - Refined localization
+- **New command files** for all languages: `plan-ar.md`, `plan-de.md`, `plan-es.md`
+- **International installation commands** added to README with language-specific examples
+- **Global keyword support** in plugin metadata for better discoverability
+
+### Fixed
+
+- **Simplified Chinese script localization** — All scripts now properly display Chinese messages instead of English
+- **Arabic template consistency** — Template and scripts now use consistent Arabic phase headers (`### المرحلة`) and state labels (`**الحالة:**`)
+- **Spanish template consistency** — Template and scripts now use consistent Spanish state labels (`**Estado:**`)
+- **Stop hook path corrections** — All language variants now use correct paths in Stop hooks
+
 ## Unreleased
 
 ### Fixed

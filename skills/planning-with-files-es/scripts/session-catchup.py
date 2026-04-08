@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-planning-with-files 会话恢复脚本
+Script de recuperación de sesión para planning-with-files-es
 
-分析上一个会话，查找在最后一次规划文件更新后未同步的上下文。
-设计为在 SessionStart 时运行。
+Analiza la sesión anterior para encontrar contexto no sincronizado tras la
+última actualización de archivos de planificación. Diseñado para SessionStart.
 
-用法：python3 session-catchup.py [项目路径]
+Uso: python3 session-catchup.py [ruta-del-proyecto]
 """
 
 import json
@@ -409,29 +409,29 @@ def main():
         return
 
     # Output catchup report
-    print("\n[planning-with-files] 检测到会话恢复")
-    print(f"上一个会话：{target_session.stem}")
-    print(f"运行环境：{runtime_name}")
+    print("\n[planning-with-files-es] RECUPERACIÓN DE SESIÓN DETECTADA")
+    print(f"Sesión anterior: {target_session.stem}")
+    print(f"Entorno de ejecución: {runtime_name}")
 
-    print(f"最后规划更新：{last_update_file} at message #{last_update_line}")
-    print(f"未同步消息：{len(messages_after)}")
+    print(f"Última actualización de planificación: {last_update_file} at message #{last_update_line}")
+    print(f"Mensajes no sincronizados: {len(messages_after)}")
 
-    print("\n--- 未同步的上下文 ---")
+    print("\n--- CONTEXTO NO SINCRONIZADO ---")
     assistant_label = 'CODEX' if runtime_name == 'codex' else 'CLAUDE'
-    for msg in messages_after[-15:]:
+    for msg in messages_after[-15:]:  # Last 15 messages
         if msg['role'] == 'user':
-            print(f"用户：{msg['content'][:300]}")
+            print(f"USUARIO: {msg['content'][:300]}")
         else:
             if msg.get('content'):
                 print(f"{assistant_label}: {msg['content'][:300]}")
             if msg.get('tools'):
-                print(f"  工具：{', '.join(msg['tools'][:4])}")
+                print(f"  Herramientas: {', '.join(msg['tools'][:4])}")
 
-    print("\n--- 建议 ---")
-    print("1. 运行：git diff --stat")
-    print("2. 读取：task_plan.md、progress.md、findings.md")
-    print("3. 根据上述上下文更新规划文件")
-    print("4. 继续执行任务")
+    print("\n--- RECOMENDACIONES ---")
+    print("1. Ejecutar: git diff --stat")
+    print("2. Leer: task_plan.md, progress.md, findings.md")
+    print("3. Actualizar archivos de planificación según el contexto anterior")
+    print("4. Continuar con la tarea")
 
 
 if __name__ == '__main__':

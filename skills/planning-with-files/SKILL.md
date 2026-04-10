@@ -60,7 +60,7 @@ hooks:
             else
               sh "$SCRIPT_DIR/check-complete.sh"
 metadata:
-  version: "2.26.1"
+  version: "2.33.0"
 ---
 
 # Planning with Files

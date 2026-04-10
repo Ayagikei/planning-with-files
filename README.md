@@ -1,12 +1,14 @@
+<div align="center">
+<img src="media/banner.png" alt="planning-with-files" width="100%">
+</div>
+
 # Planning with Files
 
 > **Work like Manus** — the AI agent company Meta acquired for **$2 billion**.
 
 [![Closed Issues](https://img.shields.io/github/issues-closed/OthmanAdi/planning-with-files?color=success)](https://github.com/OthmanAdi/planning-with-files/issues?q=is%3Aissue+is%3Aclosed)
+[![Skills Playground](https://skillsplayground.com/badges/installs/othmanadi-planning-with-files-planning-with-files.svg)](https://skillsplayground.com/skills/othmanadi-planning-with-files-planning-with-files/)
 [![Closed PRs](https://img.shields.io/github/issues-pr-closed/OthmanAdi/planning-with-files?color=success)](https://github.com/OthmanAdi/planning-with-files/pulls?q=is%3Apr+is%3Aclosed)
-[![Benchmark](https://img.shields.io/badge/Benchmark-96.7%25_pass_rate-brightgreen)](docs/evals.md)
-[![A/B Verified](https://img.shields.io/badge/A%2FB_Blind-3%2F3_wins-brightgreen)](docs/evals.md)
-[![Security Verified](https://img.shields.io/badge/Security-Audited_%26_Fixed_v2.21.0-blue)](docs/evals.md)
 
 <details>
 <summary><strong>💬 A Note from the Author</strong></summary>
@@ -42,10 +44,15 @@ See the full list of everyone who made this project better in [CONTRIBUTORS.md](
 <details>
 <summary><strong>📦 Releases & Session Recovery</strong></summary>
 
-### Current Version: v2.29.0
+### Current Version: v2.33.0
 
 | Version | Highlights |
 |---------|------------|
+| **v2.33.0** | **Multi-language expansion**: Arabic, German, and Spanish skill variants added (thanks to community contributors!) |
+| **v2.32.0** | Codex session catchup rewrite (thanks @ebrevdo!), Loaditout A-grade security badge, Stop hook Git Bash fix |
+| **v2.31.0** | Codex hooks.json integration with full lifecycle hooks (thanks @Leon-Algo!) |
+| **v2.30.1** | Fix: Codex script executable bits restored (thanks @Leon-Algo!) |
+| **v2.30.0** | `CLAUDE_SKILL_DIR` variable, IDE configs moved to per-IDE branches, plugin.json bumped from 2.23.0 |
 | **v2.29.0** | Analytics workflow template: `--template analytics` flag for data exploration sessions (thanks @mvanhorn!) |
 | **v2.28.0** | Traditional Chinese (zh-TW) skill variant (thanks @waynelee2048!) |
 | **v2.26.2** | Fix: `---` in hook commands broke YAML frontmatter parsing, hooks now register correctly |
@@ -77,7 +84,7 @@ See the full list of everyone who made this project better in [CONTRIBUTORS.md](
 When your context fills up and you run `/clear`, this skill **automatically recovers** your previous session.
 
 **How it works:**
-1. Checks for previous session data in `~/.claude/projects/`
+1. Checks for previous session data in the active IDE's session store (`~/.claude/projects/` for Claude Code, `~/.codex/sessions/` for Codex)
 2. Finds when planning files were last updated
 3. Extracts conversation that happened after (potentially lost context)
 4. Shows a catchup report so you can sync
@@ -141,7 +148,13 @@ These IDEs implement the [Agent Skills](https://agentskills.io) open specificati
 
 A Claude Code plugin that transforms your workflow to use persistent markdown files for planning, progress tracking, and knowledge storage — the exact pattern that made Manus worth billions.
 
+[![Benchmark](https://img.shields.io/badge/Benchmark-96.7%25_pass_rate-brightgreen)](docs/evals.md)
+[![A/B Verified](https://img.shields.io/badge/A%2FB_Blind-3%2F3_wins-brightgreen)](docs/evals.md)
+[![Security Verified](https://img.shields.io/badge/Security-Audited_%26_Fixed_v2.21.0-blue)](docs/evals.md)
+[![Loaditout Security Grade](https://loaditout.ai/badge/OthmanAdi/planning-with-files)](https://loaditout.ai/skills/OthmanAdi/planning-with-files)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-2.33.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
+[![SkillCheck Validated](https://img.shields.io/badge/SkillCheck-Validated-4c1)](https://getskillcheck.com)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blue)](https://code.claude.com/docs/en/plugins)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-green)](https://code.claude.com/docs/en/skills)
 [![Cursor Skills](https://img.shields.io/badge/Cursor-Skills-purple)](https://docs.cursor.com/context/skills)
@@ -154,8 +167,6 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 [![GitHub Copilot](https://img.shields.io/badge/GitHub%20Copilot-Hooks-000000)](https://docs.github.com/en/copilot/reference/hooks-configuration)
 [![Mastra Code](https://img.shields.io/badge/Mastra%20Code-Skills-00BCD4)](https://code.mastra.ai)
 [![BoxLite](https://img.shields.io/badge/BoxLite-Sandbox-6C3483)](https://boxlite.ai)
-[![Version](https://img.shields.io/badge/version-2.29.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
-[![SkillCheck Validated](https://img.shields.io/badge/SkillCheck-Validated-4c1)](https://getskillcheck.com)
 
 ## Fork Changes (Ayagikei/xxx)
 
@@ -169,15 +180,35 @@ A Claude Code plugin that transforms your workflow to use persistent markdown fi
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g
 ```
 
-中文版 / Chinese (Simplified):
+<details>
+<summary><strong>🌐 Available in 5 other languages</strong></summary>
+
+**🇸🇦 العربية / Arabic**
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-ar -g
+```
+
+**🇩🇪 Deutsch / German**
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-de -g
+```
+
+**🇪🇸 Español / Spanish**
+```bash
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files-es -g
+```
+
+**🇨🇳 中文版 / Chinese (Simplified)**
 ```bash
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zh -g
 ```
 
-正體中文版 / Chinese (Traditional):
+**🇹🇼 正體中文版 / Chinese (Traditional)**
 ```bash
 npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zht -g
 ```
+
+</details>
 
 Works with Claude Code, Cursor, Codex, Gemini CLI, and 40+ agents supporting the [Agent Skills](https://agentskills.io) spec.
 
@@ -318,6 +349,9 @@ Formally evaluated using Anthropic's [skill-creator](https://github.com/anthropi
 planning-with-files/
 ├── commands/                # Plugin commands
 │   ├── plan.md              # /planning-with-files:plan command (v2.11.0+)
+│   ├── plan-ar.md           # Arabic /plan command (v2.33.0+)
+│   ├── plan-de.md           # German /plan command (v2.33.0+)
+│   ├── plan-es.md           # Spanish /plan command (v2.33.0+)
 │   └── start.md             # /planning-with-files:start command
 ├── templates/               # Root-level templates (for CLAUDE_PLUGIN_ROOT)
 ├── scripts/                 # Root-level scripts (for CLAUDE_PLUGIN_ROOT)
@@ -342,17 +376,31 @@ planning-with-files/
 │   ├── SKILL.md
 │   ├── templates/
 │   └── scripts/
-├── skills/                  # Legacy skill folder
-│   └── planning-with-files/
-│       ├── SKILL.md
-│       ├── examples.md
-│       ├── reference.md
-│       ├── templates/
-│       └── scripts/
-│           ├── init-session.sh
-│           ├── check-complete.sh
-│           ├── init-session.ps1   # Windows PowerShell
-│           └── check-complete.ps1 # Windows PowerShell
+├── skills/                  # Skill variants
+│   ├── planning-with-files/     # English (default)
+│   │   ├── SKILL.md
+│   │   ├── examples.md
+│   │   ├── reference.md
+│   │   ├── templates/
+│   │   └── scripts/
+│   │       ├── init-session.sh
+│   │       ├── check-complete.sh
+│   │       ├── init-session.ps1   # Windows PowerShell
+│   │       └── check-complete.ps1 # Windows PowerShell
+│   ├── planning-with-files-ar/   # Arabic (v2.33.0+)
+│   │   ├── SKILL.md
+│   │   ├── templates/
+│   │   └── scripts/
+│   ├── planning-with-files-de/   # German (v2.33.0+)
+│   │   ├── SKILL.md
+│   │   ├── templates/
+│   │   └── scripts/
+│   ├── planning-with-files-es/   # Spanish (v2.33.0+)
+│   │   ├── SKILL.md
+│   │   ├── templates/
+│   │   └── scripts/
+│   ├── planning-with-files-zh/   # Chinese Simplified (v2.25.0+)
+│   └── planning-with-files-zht/  # Chinese Traditional (v2.28.0+)
 ├── .gemini/                 # Gemini CLI skills + hooks
 │   ├── settings.json        # Hook configuration (v2.26.0)
 │   ├── hooks/               # Hook scripts (SessionStart, BeforeTool, AfterTool, BeforeModel, SessionEnd)
@@ -383,7 +431,10 @@ planning-with-files/
 │       └── scripts/         # Hook scripts (bash + PowerShell)
 ├── .mastracode/             # Mastra Code skills + hooks
 │   └── skills/
+├── .kiro/                   # Kiro Agent Skills (v2.27.0+)
+│   └── skills/
 ├── CHANGELOG.md
+├── CITATION.cff
 ├── LICENSE
 └── README.md
 ```

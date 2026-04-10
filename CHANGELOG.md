@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.33.0] - 2026-04-09
+
+### Added
+
+- **Multi-language expansion** — New skill variants for international users:
+  - Arabic (`planning-with-files-ar`) - Full Arabic localization with proper RTL support
+  - German (`planning-with-files-de`) - Complete German localization  
+  - Spanish (`planning-with-files-es`) - Comprehensive Spanish localization
+  - Enhanced Simplified Chinese (`planning-with-files-zh`) - Fully localized scripts and templates
+  - Enhanced Traditional Chinese (`planning-with-files-zht`) - Refined localization
+- **New command files** for all languages: `plan-ar.md`, `plan-de.md`, `plan-es.md`
+- **International installation commands** added to README with language-specific examples
+- **Global keyword support** in plugin metadata for better discoverability
+
+### Fixed
+
+- **Simplified Chinese script localization** — All scripts now properly display Chinese messages instead of English
+- **Arabic template consistency** — Template and scripts now use consistent Arabic phase headers (`### المرحلة`) and state labels (`**الحالة:**`)
+- **Spanish template consistency** — Template and scripts now use consistent Spanish state labels (`**Estado:**`)
+- **Stop hook path corrections** — All language variants now use correct paths in Stop hooks
+
+## [2.32.0] - 2026-04-08
+
+### Added
+
+- **Codex session catchup** (PR #124 by @ebrevdo) — `session-catchup.py` now reads Codex rollout JSONL from `~/.codex/sessions`, prefers `CODEX_THREAD_ID` when skipping the current thread, filters subagent and tiny sessions, and detects planning-file updates from structured Codex `patch_apply_end` events
+- **Loaditout security badge** (PR #126, closes #123) — Added A-grade security badge to README (top 20.5% of 20,000+ MCP servers scanned)
+
+### Fixed
+
+- **Stop hook fails on Windows Git Bash (MSYS2)** (PR #126, closes #125)
+  - Root cause: MSYS2 treats bare `SD="/c/Users/..."` as a command to execute rather than a variable assignment
+  - Fix: changed `SD="..."` to `export SD="..."` across all 9 SKILL.md variants (Claude Code, Codex, CodeBuddy, Cursor, Factory, Gemini, Mastra Code, OpenCode, + zh/zht)
+
+### Changed
+
+- Version bumped to 2.32.0 across all 12 SKILL.md files, plugin.json, marketplace.json, and CITATION.cff
+
+### Thanks
+
+- @ebrevdo (Eugene Brevdo) for the Codex session catchup rewrite (PR #124)
+
 ## [2.29.0] - 2026-03-24
 
 ### Added

@@ -10,7 +10,7 @@ def main() -> None:
     parts = [adapter.run_session_catchup(cwd), adapter.render_active_plan_context(cwd)]
     text = "\n\n".join(part for part in parts if part)
     if text:
-        print(text)
+        adapter.emit_additional_context("SessionStart", text)
 
 
 if __name__ == "__main__":

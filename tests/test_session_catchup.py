@@ -238,6 +238,63 @@ class SessionCatchupCodexTests(unittest.TestCase):
         self.assertIn("Last planning update: task_plan.md", output)
         self.assertIn("CODEX: Codex summary after planning update", output)
 
+    def test_codex_main_detects_docs_based_planning_directory(self):
+        plan_dir = self.project_dir / "docs" / "planning" / "feature-a"
+        plan_dir.mkdir(parents=True)
+        for filename in self.module.PLANNING_FILES:
+            (plan_dir / filename).write_text("# test\n", encoding="utf-8")
+
+        self.write_codex_session(
+            "rollout-2026-04-07T00-00-00-previous-thread.jsonl",
+            records=[
+                {
+                    "timestamp": "2026-04-07T00:00:02.000Z",
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "patch_apply_end",
+                        "success": True,
+                        "changes": {
+                            str(plan_dir / "task_plan.md"): {"operation": "modified"}
+                        },
+                    },
+                },
+                {
+                    "timestamp": "2026-04-07T00:00:03.000Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": "Codex summary after docs planning update",
+                            }
+                        ],
+                    },
+                },
+            ],
+        )
+
+        stdout = io.StringIO()
+        with mock.patch.dict(
+            os.environ,
+            {"CODEX_SESSIONS_DIR": str(self.sessions_dir)},
+            clear=False,
+        ):
+            os.environ.pop("CODEX_THREAD_ID", None)
+            with mock.patch("pathlib.Path.home", return_value=self.root):
+                with mock.patch.object(
+                    self.module.sys,
+                    "argv",
+                    ["session-catchup.py", self.project_path],
+                ):
+                    with redirect_stdout(stdout):
+                        self.module.main()
+
+        output = stdout.getvalue()
+        self.assertIn("SESSION CATCHUP DETECTED", output)
+        self.assertIn("Codex summary after docs planning update", output)
+
 
 if __name__ == "__main__":
     unittest.main()

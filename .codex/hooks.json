@@ -34,18 +34,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.codex/hooks/post_tool_use.py\" 2>/dev/null || true",
-            "statusMessage": "Reviewing Bash against plan"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

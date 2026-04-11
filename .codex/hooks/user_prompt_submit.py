@@ -9,7 +9,7 @@ def main() -> None:
     cwd = adapter.cwd_from_payload(payload)
     text = adapter.render_active_plan_context(cwd)
     if text:
-        print(text)
+        adapter.emit_additional_context("UserPromptSubmit", text)
 
 
 if __name__ == "__main__":

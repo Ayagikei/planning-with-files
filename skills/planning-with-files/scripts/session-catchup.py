@@ -11,6 +11,7 @@ Usage: python3 session-catchup.py [project-path]
 import json
 import sys
 import os
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -21,6 +22,20 @@ except ImportError:
 
 PLANNING_FILES = ['task_plan.md', 'progress.md', 'findings.md']
 MIN_SESSION_BYTES = 5000
+PLANNING_DIR_NAMES = ('plans', 'plan', 'planning')
+SKIP_DIR_NAMES = {
+    '.git',
+    '.hg',
+    '.svn',
+    '.codex',
+    '.claude',
+    '.cursor',
+    'node_modules',
+    'dist',
+    'build',
+    'target',
+    '.next',
+}
 
 
 def json_loads(line: str) -> Optional[Dict[str, Any]]:
@@ -41,6 +56,103 @@ def normalize_for_compare(path_value: str) -> str:
         return str(Path(expanded).resolve())
     except (OSError, ValueError):
         return os.path.abspath(expanded)
+
+
+def git_root(project_path: str) -> Path:
+    cwd = Path(project_path)
+    result = subprocess.run(
+        ['git', 'rev-parse', '--show-toplevel'],
+        cwd=str(cwd),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        root = result.stdout.strip()
+        if root:
+            return Path(root)
+    return cwd.resolve()
+
+
+def is_under(child: Path, parent: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def iter_docs_task_plans(repo_root: Path) -> Iterable[Path]:
+    docs_dir = repo_root / 'docs'
+    if not docs_dir.is_dir():
+        return []
+
+    matches = []
+    for path in docs_dir.rglob('task_plan.md'):
+        if any(part in SKIP_DIR_NAMES or part.startswith('.') for part in path.parts):
+            continue
+        matches.append(path.parent)
+    return matches
+
+
+def candidate_planning_dirs(project_path: str) -> List[Path]:
+    cwd = Path(project_path).resolve()
+    repo_root = git_root(project_path)
+    candidates: List[Path] = []
+    seen = set()
+
+    def add(path: Path) -> None:
+        resolved = path.resolve()
+        if resolved in seen:
+            return
+        seen.add(resolved)
+        candidates.append(resolved)
+
+    env_dir = os.getenv('PLANNING_WITH_FILES_DIR', '').strip()
+    if env_dir:
+        add(Path(os.path.expanduser(env_dir)))
+
+    current = cwd
+    while True:
+        add(current)
+        if current == repo_root or current.parent == current:
+            break
+        current = current.parent
+
+    add(repo_root)
+
+    docs_dir = repo_root / 'docs'
+    for name in PLANNING_DIR_NAMES:
+        add(docs_dir / name)
+    for candidate in iter_docs_task_plans(repo_root):
+        add(candidate)
+
+    return candidates
+
+
+def resolve_planning_dir(project_path: str) -> Optional[Path]:
+    cwd = Path(project_path).resolve()
+    repo_root = git_root(project_path)
+    best = None
+
+    for directory in candidate_planning_dirs(project_path):
+        task_plan = directory / 'task_plan.md'
+        if not task_plan.is_file():
+            continue
+
+        trio_count = sum((directory / name).is_file() for name in PLANNING_FILES)
+        latest_mtime = max(
+            (directory / name).stat().st_mtime
+            for name in PLANNING_FILES
+            if (directory / name).exists()
+        )
+        cwd_bonus = 1 if is_under(cwd, directory) else 0
+        root_penalty = 0 if directory != repo_root else -1
+        score = (trio_count, cwd_bonus, root_penalty, latest_mtime)
+        if best is None or score > best[:4]:
+            best = (*score, directory)
+
+    return None if best is None else best[4]
 
 
 def normalize_path(project_path: str) -> str:
@@ -373,13 +485,9 @@ def extract_messages_after(messages: List[Dict[str, Any]], after_line: int) -> L
 
 def main():
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
+    planning_dir = resolve_planning_dir(project_path)
 
-    # Check if planning files exist (indicates active task)
-    has_planning_files = any(
-        Path(project_path, f).exists() for f in PLANNING_FILES
-    )
-    if not has_planning_files:
-        # No planning files in this project; skip catchup to avoid noise.
+    if planning_dir is None:
         return
 
     runtime_name, sessions = get_session_candidates(project_path)
@@ -412,6 +520,7 @@ def main():
     print("\n[planning-with-files] SESSION CATCHUP DETECTED")
     print(f"Previous session: {target_session.stem}")
     print(f"Runtime: {runtime_name}")
+    print(f"Planning dir: {planning_dir}")
 
     print(f"Last planning update: {last_update_file} at message #{last_update_line}")
     print(f"Unsynced messages: {len(messages_after)}")
@@ -429,7 +538,7 @@ def main():
 
     print("\n--- RECOMMENDED ---")
     print("1. Run: git diff --stat")
-    print("2. Read: task_plan.md, progress.md, findings.md")
+    print(f"2. Read: {planning_dir / 'task_plan.md'}, {planning_dir / 'progress.md'}, {planning_dir / 'findings.md'}")
     print("3. Update planning files based on above context")
     print("4. Continue with task")
 

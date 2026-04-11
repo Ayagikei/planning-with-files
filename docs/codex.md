@@ -103,15 +103,16 @@ Codex reads hooks from:
 1. `.codex/hooks.json` in your project root
 2. `~/.codex/hooks.json` for your global install
 
-This integration includes all five Codex lifecycle hooks:
+This integration includes four Codex lifecycle hooks:
 
 | Hook | What It Does |
 |------|--------------|
 | **SessionStart** | Runs `session-catchup.py`, then injects active plan context |
 | **UserPromptSubmit** | Re-injects plan and recent progress on every user message |
 | **PreToolUse** | Re-reads the active `task_plan.md` before Bash |
-| **PostToolUse** | Reminds the agent to update `progress.md` after Bash activity |
 | **Stop** | Blocks once when phases are incomplete, then falls back to a follow-up reminder |
+
+`PostToolUse` is intentionally not enabled in this fork's Codex integration. In current Codex runtimes it only matches `Bash`, so it fires too often to be a useful planning reminder.
 
 ### The Three Files
 

@@ -67,6 +67,19 @@ def emit_json(payload: dict[str, Any]) -> None:
     sys.stdout.write("\n")
 
 
+def emit_additional_context(event_name: str, text: str) -> None:
+    if not text:
+        return
+    emit_json(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": event_name,
+                "additionalContext": text,
+            }
+        }
+    )
+
+
 def resolve_skill_dir() -> Path | None:
     candidates = [
         HOOK_DIR.parent / "skills" / "planning-with-files",

@@ -103,15 +103,15 @@ Codex reads hooks from:
 1. `.codex/hooks.json` in your project root
 2. `~/.codex/hooks.json` for your global install
 
-This integration includes four Codex lifecycle hooks:
+This integration includes two Codex lifecycle hooks:
 
 | Hook | What It Does |
 |------|--------------|
-| **SessionStart** | Runs `session-catchup.py`, then injects active plan context |
-| **UserPromptSubmit** | Re-injects plan and recent progress on every user message |
-| **PreToolUse** | Re-reads the active `task_plan.md` before Bash |
-| **Stop** | Blocks once when phases are incomplete, then falls back to a follow-up reminder |
+| **SessionStart** | Reminds the agent to check for existing planning files or create them only if the task needs persistent tracking |
+| **Stop** | Reminds the agent to update `progress.md` and `task_plan.md` before ending if planning was used |
 
+`UserPromptSubmit` is intentionally not enabled in this fork's Codex integration. It fires on every user message and is too noisy for long sessions.
+`PreToolUse` is intentionally not enabled in this fork's Codex integration. Re-reading planning context before every Bash command added noise without enough value.
 `PostToolUse` is intentionally not enabled in this fork's Codex integration. In current Codex runtimes it only matches `Bash`, so it fires too often to be a useful planning reminder.
 
 ### The Three Files
@@ -124,15 +124,7 @@ Once activated, the skill creates and maintains:
 | `findings.md` | Research, discoveries | Active planning directory |
 | `progress.md` | Session log, test results | Active planning directory |
 
-The hook resolver prefers these locations in order:
-
-1. `PLANNING_WITH_FILES_DIR` if you set it explicitly
-2. the current directory or one of its ancestors
-3. `docs/plans`, `docs/plan`, `docs/planning`
-4. the most recent `docs/**/task_plan.md`
-5. legacy repo-root `task_plan.md`
-
-This matches the fork’s "project docs planning directory first" rule while staying compatible with older root-level plans.
+This fork intentionally avoids trying to auto-select an "active plan" in Codex hooks. The SessionStart reminder asks the agent to inspect the repo and make that decision in-context instead.
 
 ---
 

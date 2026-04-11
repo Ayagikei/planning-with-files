@@ -29,61 +29,13 @@ class CodexHooksTests(unittest.TestCase):
 
         payload = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))
         self.assertEqual(
-            {"SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"},
+            {"SessionStart", "Stop"},
             set(payload["hooks"]),
         )
 
-    def test_user_prompt_submit_finds_docs_based_plan(self) -> None:
+    def test_session_start_emits_static_json_additional_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            plan_dir = root / "docs" / "planning" / "feature-a"
-            plan_dir.mkdir(parents=True)
-            plan_dir.joinpath("task_plan.md").write_text(
-                "# Task Plan\n\n## Goal\nShip Codex hooks\n",
-                encoding="utf-8",
-            )
-            plan_dir.joinpath("progress.md").write_text(
-                "# Progress\n\nFinished adapter draft.\n",
-                encoding="utf-8",
-            )
-            plan_dir.joinpath("findings.md").write_text(
-                "# Findings\n\n- reuse cursor hooks\n",
-                encoding="utf-8",
-            )
-
-            result = self.run_python_hook(
-                "user_prompt_submit.py",
-                {"cwd": str(root)},
-                root,
-            )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        payload = json.loads(result.stdout)
-        context = payload["hookSpecificOutput"]["additionalContext"]
-        self.assertEqual("UserPromptSubmit", payload["hookSpecificOutput"]["hookEventName"])
-        self.assertIn("ACTIVE PLAN", context)
-        self.assertIn("Ship Codex hooks", context)
-        self.assertIn("Finished adapter draft", context)
-        self.assertIn(str(plan_dir), context)
-
-    def test_session_start_emits_json_additional_context(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            plan_dir = root / "docs" / "planning" / "feature-a"
-            plan_dir.mkdir(parents=True)
-            plan_dir.joinpath("task_plan.md").write_text(
-                "# Task Plan\n\n## Goal\nResume Codex work\n",
-                encoding="utf-8",
-            )
-            plan_dir.joinpath("progress.md").write_text(
-                "# Progress\n\nNeed to reconcile hook behavior.\n",
-                encoding="utf-8",
-            )
-            plan_dir.joinpath("findings.md").write_text(
-                "# Findings\n\n- runtime rejects plain text\n",
-                encoding="utf-8",
-            )
-
             result = self.run_python_hook(
                 "session_start.py",
                 {"cwd": str(root), "source": "resume"},
@@ -94,74 +46,22 @@ class CodexHooksTests(unittest.TestCase):
         payload = json.loads(result.stdout)
         context = payload["hookSpecificOutput"]["additionalContext"]
         self.assertEqual("SessionStart", payload["hookSpecificOutput"]["hookEventName"])
-        self.assertIn("ACTIVE PLAN", context)
-        self.assertIn("Resume Codex work", context)
+        self.assertIn("check whether the repo already has planning files", context)
+        self.assertIn("task_plan.md, progress.md, and findings.md", context)
 
-    def test_pre_tool_use_adapter_emits_system_message_for_docs_plan(self) -> None:
+    def test_stop_emits_simple_progress_reminder(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            plan_dir = root / "docs" / "plans"
-            plan_dir.mkdir(parents=True)
-            plan_dir.joinpath("task_plan.md").write_text(
-                textwrap.dedent(
-                    """\
-                    # Task Plan
-                    ### Phase 1: Discovery
-                    - **Status:** complete
-                    """
-                ),
-                encoding="utf-8",
-            )
-
             result = self.run_python_hook(
-                "pre_tool_use.py",
-                {"cwd": str(root), "tool_input": {"command": "pwd"}},
+                "stop.py",
+                {"cwd": str(root), "stop_hook_active": False},
                 root,
             )
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertIn("systemMessage", payload)
-        self.assertIn("# Task Plan", payload["systemMessage"])
-
-    def test_stop_adapter_blocks_once_then_allows_reentry(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            plan_dir = root / "docs" / "releases" / "v1" / "feature"
-            plan_dir.mkdir(parents=True)
-            plan_dir.joinpath("task_plan.md").write_text(
-                textwrap.dedent(
-                    """\
-                    ### Phase 1: Discovery
-                    - **Status:** complete
-
-                    ### Phase 2: Implementation
-                    - **Status:** pending
-                    """
-                ),
-                encoding="utf-8",
-            )
-
-            first = self.run_python_hook(
-                "stop.py",
-                {"cwd": str(root), "stop_hook_active": False},
-                root,
-            )
-            second = self.run_python_hook(
-                "stop.py",
-                {"cwd": str(root), "stop_hook_active": True},
-                root,
-            )
-
-        self.assertEqual(0, first.returncode, first.stderr)
-        self.assertEqual(0, second.returncode, second.stderr)
-
-        first_payload = json.loads(first.stdout)
-        second_payload = json.loads(second.stdout)
-
-        self.assertEqual("block", first_payload["decision"])
-        self.assertIn("Task in progress", first_payload["reason"])
-        self.assertIn("Task in progress", second_payload["systemMessage"])
+        self.assertIn("update progress.md and task_plan.md", payload["systemMessage"])
 
 
 if __name__ == "__main__":

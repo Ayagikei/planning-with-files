@@ -5,21 +5,15 @@ import codex_hook_adapter as adapter
 
 
 def main() -> None:
-    payload = adapter.load_payload()
-    cwd = adapter.cwd_from_payload(payload)
-    message = adapter.stop_message(cwd)
-    if not message:
-        return
-
-    if "ALL PHASES COMPLETE" in message:
-        adapter.emit_json({"systemMessage": message})
-        return
-
-    if bool(payload.get("stop_hook_active")):
-        adapter.emit_json({"systemMessage": message})
-        return
-
-    adapter.emit_json({"decision": "block", "reason": message})
+    adapter.load_payload()
+    adapter.emit_json(
+        {
+            "systemMessage": (
+                "[planning-with-files] Before stopping, if you used planning files in this task, "
+                "update progress.md and task_plan.md to reflect the latest state."
+            )
+        }
+    )
 
 
 if __name__ == "__main__":

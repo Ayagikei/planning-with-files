@@ -5,12 +5,16 @@ import codex_hook_adapter as adapter
 
 
 def main() -> None:
-    payload = adapter.load_payload()
-    cwd = adapter.cwd_from_payload(payload)
-    parts = [adapter.run_session_catchup(cwd), adapter.render_active_plan_context(cwd)]
-    text = "\n\n".join(part for part in parts if part)
-    if text:
-        adapter.emit_additional_context("SessionStart", text)
+    adapter.load_payload()
+    adapter.emit_additional_context(
+        "SessionStart",
+        (
+            "[planning-with-files] If this task is complex, first check whether the repo already has planning files "
+            "(for example docs/plans, docs/plan, docs/planning, or an existing task_plan.md). "
+            "If a plan exists, read task_plan.md, progress.md, and findings.md before continuing. "
+            "If not, create planning files only when the task actually needs persistent tracking."
+        ),
+    )
 
 
 if __name__ == "__main__":

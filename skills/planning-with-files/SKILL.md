@@ -1,6 +1,6 @@
 ---
 name: planning-with-files
-description: Use when planning, breaking down, or tracking a complex multi-step task that needs persistent on-disk working memory, recovery after /clear or context resets, and planning files stored in the project's docs/planning directory.
+description: Use for complex multi-step planning that needs persistent markdown tracking or recovery after context resets.
 user-invocable: true
 allowed-tools: "Read, Write, Edit, Bash, Glob, Grep"
 hooks:

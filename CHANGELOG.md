@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.1] - 2026-06-15
+
+A documentation-only patch. The Codex verification command in `docs/codex.md` checked for a feature-flag name that current Codex no longer prints, so a correctly configured user running the documented check was told to upgrade. This release fixes the command and its follow-up sentence to match the canonical `hooks` flag already documented elsewhere in the same file. No code, hook, script, or test changed; the parity set is bumped to 3.1.1.
+
+### Fixed
+
+- **Codex verification command checks the canonical `hooks` feature flag** (PR #184 by @Fat-Jan). The Verification block ran `codex features list | rg '^codex_hooks\s'`, but Codex moved its canonical feature key from `codex_hooks` to `hooks` in 0.129.0 (openai/codex#20522). The old key still resolves as a deprecated alias inside `config.toml`, yet `codex features list` prints only the canonical `hooks`, so the bare `^codex_hooks\s` pattern matched nothing on any current Codex and routed correctly configured users to the "upgrade Codex" path. The command is now `rg '^(hooks|codex_hooks)\s'` and the troubleshooting sentence reads "If neither `hooks` nor the deprecated alias `codex_hooks` appears". This aligns the Verification block with the `hooks = true` configuration guidance and the deprecated-alias note already carried in the same document since v2.39.0.
+
+### Changed
+
+- Version bumped to 3.1.1 across the 17 parity-locked files via `scripts/bump-version.py`. `.continue`, `.gemini`, `.pi`, and `.kiro` lag intentionally per AGENTS.md release scope.
+
+### Verification
+
+- Python suite: 180 passed, 4 skipped, 0 failed, unchanged from v3.1.0. A documentation-only change touches no test path.
+- Supply-chain review: the single changed file is `docs/codex.md`, a two-line edit to a fenced shell command and one prose sentence. No dependency, install hook, bin shim, or new file in the install path.
+
+### Thanks
+
+- @Fat-Jan for catching that the Codex verification command checked a feature-flag name current Codex no longer emits (PR #184).
+
 ## [3.1.0] - 2026-06-13
 
 This release adopts four community contributions filed against the v3.0.0 cycle, each preserving the contributor as commit author. The Codex adapter gets the Stop-hook behavior fix that issue #178 asked for plus the PreCompact parity it was missing, the Pi extension gains a real test suite, and the SHA-cache documentation is corrected to the v3 path. With no v3 mode marker on disk the canonical hooks remain byte-identical to v2.43.0.

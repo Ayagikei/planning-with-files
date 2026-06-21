@@ -6,15 +6,14 @@ import codex_hook_adapter as adapter
 
 def main() -> None:
     payload = adapter.load_payload()
-    cwd = adapter.cwd_from_payload(payload)
-    files = adapter.planning_files(cwd)
-    if files is None:
+    root = adapter.cwd_from_payload(payload)
+
+    if not adapter.is_session_attached(root, adapter.session_id_from_payload(payload)):
         return
-    message = (
-        "[planning-with-files] Update progress.md with what you just did. "
-        "If a phase is now complete, update task_plan.md status."
-    )
-    adapter.emit_json({"systemMessage": message})
+
+    stdout, _ = adapter.run_shell_script("post-tool-use.sh", root)
+    if stdout:
+        adapter.emit_json({"systemMessage": stdout})
 
 
 if __name__ == "__main__":

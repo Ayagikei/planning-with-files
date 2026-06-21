@@ -1,8 +1,9 @@
 #!/bin/bash
 # planning-with-files: Stop hook for Codex
-# Reused from the Cursor integration; Codex adapts followup_message separately.
 
-PLAN_FILE="task_plan.md"
+HOOK_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+PLAN_DIR="$(sh "${HOOK_DIR}/resolve-plan-dir.sh" 2>/dev/null)"
+PLAN_FILE="${PLAN_DIR:+${PLAN_DIR}/}task_plan.md"
 
 if [ ! -f "$PLAN_FILE" ]; then
     exit 0
@@ -29,5 +30,5 @@ if [ "$COMPLETE" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
     exit 0
 fi
 
-echo "{\"followup_message\": \"[planning-with-files] Task incomplete ($COMPLETE/$TOTAL phases done). Update progress.md, then read task_plan.md and continue working on the remaining phases.\"}"
+echo "{\"followup_message\": \"[planning-with-files] Task in progress ($COMPLETE/$TOTAL phases complete). If ending this turn, make sure progress.md is up to date.\"}"
 exit 0

@@ -2,6 +2,8 @@
 
 Using planning-with-files with [OpenAI Codex](https://developers.openai.com/codex/).
 
+---
+
 ## Overview
 
 Codex discovers skills from `.codex/skills/` and hooks from `.codex/hooks.json` or `~/.codex/hooks.json`.
@@ -9,23 +11,19 @@ Codex discovers skills from `.codex/skills/` and hooks from `.codex/hooks.json` 
 This integration includes both:
 
 - `.codex/skills/planning-with-files/` for the skill itself
-- `.codex/hooks.json` plus `.codex/hooks/*.py` for lifecycle automation
+- `.codex/hooks.json` plus `.codex/hooks/` for lifecycle automation
 
-The Codex hook layer is adapted for this fork:
+The hook behavior reuses the same mature shell scripts as the Cursor integration, with a thin Codex adapter layer for the differences in hook protocol.
 
-- it follows the official `hooks.json` flow from Codex docs
-- it auto-detects the active planning directory instead of assuming the repo root
-- it still falls back to legacy root-level `task_plan.md` when that is what the project uses
-
-> **Important:** Codex hooks require `codex_hooks = true` in `~/.codex/config.toml`.
+> **Important:** Codex hooks require `hooks = true` in `~/.codex/config.toml`. The older `codex_hooks = true` still works as a deprecated alias.
 
 ---
 
 ## Installation
 
-### Method 1: Workspace Installation
+### Method 1: Workspace Installation (Recommended)
 
-Commit `.codex/` to your repository so the team shares the same Codex skill and hook behavior:
+Share the skill and hooks with your whole team by committing `.codex/` to your repository:
 
 ```bash
 # In your project repository
@@ -55,9 +53,9 @@ git clone https://github.com/OthmanAdi/planning-with-files.git /tmp/planning-wit
 mkdir -p ~/.codex/skills
 cp -r /tmp/planning-with-files/.codex/skills/planning-with-files ~/.codex/skills/
 
-# Copy hook helpers
+# Copy the hook scripts
 mkdir -p ~/.codex/hooks
-cp -r /tmp/planning-with-files/.codex/hooks ~/.codex/
+cp -r /tmp/planning-with-files/.codex/hooks/* ~/.codex/hooks/
 
 # Copy hooks.json
 # If you already have ~/.codex/hooks.json, merge the planning-with-files entries manually
@@ -67,7 +65,7 @@ cp /tmp/planning-with-files/.codex/hooks.json ~/.codex/hooks.json
 rm -rf /tmp/planning-with-files
 ```
 
-> **Note:** If you already have a `~/.codex/hooks.json`, do not overwrite it blindly. Merge the planning-with-files hook entries into your existing file.
+> **Note:** If you already have a `~/.codex/hooks.json`, do not overwrite it blindly. Merge the `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, and `Stop` entries into your existing file.
 
 ### Enable Hooks in `config.toml`
 
@@ -75,22 +73,21 @@ Ensure your `~/.codex/config.toml` contains:
 
 ```toml
 [features]
-codex_hooks = true
+hooks = true
 ```
 
-If you already have a `[features]` section, add `codex_hooks = true` under it instead of creating a duplicate section.
+If you already have a `[features]` section, add `hooks = true` under it instead of creating a duplicate section. `codex_hooks = true` is still accepted as a deprecated alias for users on older configs.
 
 ### Verification
 
 ```bash
 codex --version
-codex features list | rg '^codex_hooks\\s'
+codex features list | rg '^(hooks|codex_hooks)\s'
 ls -la ~/.codex/skills/planning-with-files/SKILL.md
-ls -la ~/.codex/hooks.json
-ls -la ~/.codex/hooks
+ls -la ~/.codex/hooks.json ~/.codex/hooks/
 ```
 
-If `codex_hooks` does not appear in `codex features list`, upgrade Codex before troubleshooting the skill.
+If neither `hooks` nor the deprecated alias `codex_hooks` appears in `codex features list`, upgrade Codex before troubleshooting the skill.
 
 ---
 
@@ -103,16 +100,16 @@ Codex reads hooks from:
 1. `.codex/hooks.json` in your project root
 2. `~/.codex/hooks.json` for your global install
 
-This integration includes two Codex lifecycle hooks:
+This integration includes the Codex lifecycle hooks used by the adapter:
 
 | Hook | What It Does |
 |------|--------------|
-| **SessionStart** | Reminds the agent to check for existing planning files or create them only if the task needs persistent tracking |
-| **Stop** | Reminds the agent to update `progress.md` and `task_plan.md` before ending if planning was used |
-
-`UserPromptSubmit` is intentionally not enabled in this fork's Codex integration. It fires on every user message and is too noisy for long sessions.
-`PreToolUse` is intentionally not enabled in this fork's Codex integration. Re-reading planning context before every Bash command added noise without enough value.
-`PostToolUse` is intentionally not enabled in this fork's Codex integration. In current Codex runtimes it only matches `Bash`, so it fires too often to be a useful planning reminder.
+| **SessionStart** | Runs `session-catchup.py`, then injects active plan context |
+| **UserPromptSubmit** | Re-injects plan and recent progress on every user message |
+| **PreToolUse** | Re-reads the first 30 lines of `task_plan.md` before Bash |
+| **PostToolUse** | Reminds the agent to update `progress.md` after Bash activity |
+| **PreCompact** | Reminds the agent to flush `progress.md` and `task_plan.md` before compaction |
+| **Stop** | Blocks once when phases are incomplete, then falls back to a follow-up reminder |
 
 ### The Three Files
 
@@ -120,11 +117,9 @@ Once activated, the skill creates and maintains:
 
 | File | Purpose | Location |
 |------|---------|----------|
-| `task_plan.md` | Phases, progress, decisions | Active planning directory |
-| `findings.md` | Research, discoveries | Active planning directory |
-| `progress.md` | Session log, test results | Active planning directory |
-
-This fork intentionally avoids trying to auto-select an "active plan" in Codex hooks. The SessionStart reminder asks the agent to inspect the repo and make that decision in-context instead.
+| `task_plan.md` | Phases, progress, decisions | Project planning-doc location, such as `docs/plans` / `docs/plan` / `docs/planning`; project root only for legacy repos |
+| `findings.md` | Research, discoveries | Same directory as `task_plan.md` |
+| `progress.md` | Session log, test results | Same directory as `task_plan.md` |
 
 ---
 
@@ -134,17 +129,17 @@ This fork intentionally avoids trying to auto-select an "active plan" in Codex h
 
 With workspace installation (`.codex/` committed to your repo):
 
-- everyone on the team gets the same skill and hooks
-- the Codex setup is version controlled with the project
-- updates ship through normal git review
+- Everyone on the team gets the same skill and hooks
+- The Codex setup is version controlled with the project
+- Updates ship through normal git review
 
 ### Personal Installation
 
 With personal installation (`~/.codex/`):
 
-- you can use the skill across all projects
-- you keep your setup even if you change repositories
-- existing global hooks may need manual merging
+- You can use the skill across all projects
+- You keep your setup even if you change repositories
+- Existing global hooks may need manual merging
 
 ---
 
@@ -152,11 +147,10 @@ With personal installation (`~/.codex/`):
 
 ### Hooks Not Running?
 
-1. Check that `codex_hooks = true` is present in `~/.codex/config.toml`
+1. Check that `hooks = true` (or the deprecated alias `codex_hooks = true`) is present in `~/.codex/config.toml`
 2. Verify `.codex/hooks.json` or `~/.codex/hooks.json` exists
 3. Restart Codex after adding or changing hooks
-4. Run `codex features list | rg '^codex_hooks\\s'`
-5. If you use docs-based planning locations, make sure at least `task_plan.md` exists in the active planning directory
+4. Run `codex features list | rg '^(hooks|codex_hooks)\s'`
 
 ### Already Using Other Global Hooks?
 
@@ -174,6 +168,14 @@ If you enable both, Codex may run both sets of hooks and duplicate the reminders
 ### Windows Support
 
 OpenAI's current Codex hooks documentation says hooks are disabled on Windows. The skill files can still be installed there, but the hook automation is currently for macOS/Linux Codex environments.
+
+---
+
+## Learn More
+
+- [Installation Guide](installation.md)
+- [Quick Start](quickstart.md)
+- [Workflow Diagram](workflow.md)
 
 ---
 

@@ -5,15 +5,20 @@ import codex_hook_adapter as adapter
 
 
 def main() -> None:
-    adapter.load_payload()
-    adapter.emit_json(
-        {
-            "systemMessage": (
-                "[planning-with-files] Before stopping, if you used planning files in this task, "
-                "update progress.md and task_plan.md to reflect the latest state."
-            )
-        }
-    )
+    payload = adapter.load_payload()
+    root = adapter.cwd_from_payload(payload)
+
+    if not adapter.is_session_attached(root, adapter.session_id_from_payload(payload)):
+        return
+
+    stdout, _ = adapter.run_shell_script("stop.sh", root)
+    result = adapter.parse_json(stdout)
+
+    message = result.get("followup_message")
+    if not isinstance(message, str) or not message:
+        return
+
+    adapter.emit_json({"systemMessage": message})
 
 
 if __name__ == "__main__":

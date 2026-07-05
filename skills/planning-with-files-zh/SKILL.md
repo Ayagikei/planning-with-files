@@ -64,24 +64,25 @@ $(command -v python3 || command -v python) "${SKILL_DIR}/scripts/session-catchup
 ## 重要：文件存放位置
 
 - **模板**在 `${CLAUDE_PLUGIN_ROOT}/templates/` 中
-- **你的规划文件**放在**你的项目目录**中
+- **你的规划文件**优先放在项目已有的规划文档位置，例如 `docs/plans`、`docs/plan`、`docs/planning` 或功能专属 docs 目录。只有为了兼容旧项目，或项目明确把规划文件放在根目录时，才使用项目根目录。
 
 | 位置 | 存放内容 |
 |------|---------|
 | 技能目录 (`${CLAUDE_PLUGIN_ROOT}/`) | 模板、脚本、参考文档 |
-| 你的项目目录 | `task_plan.md`、`findings.md`、`progress.md` |
+| 项目规划文档位置 | `task_plan.md`、`findings.md`、`progress.md` |
 
 ## 快速开始
 
-在任何复杂任务之前：
+在真正受益于持久化规划的任务之前：
 
-1. **创建 `task_plan.md`** — 参考 [templates/task_plan.md](templates/task_plan.md) 模板
-2. **创建 `findings.md`** — 参考 [templates/findings.md](templates/findings.md) 模板
-3. **创建 `progress.md`** — 参考 [templates/progress.md](templates/progress.md) 模板
-4. **决策前重新读取计划** — 在注意力窗口中刷新目标
-5. **每个阶段完成后更新** — 标记完成，记录错误
+1. **先分类任务** — trivial / medium-light / large
+2. **跳过琐碎任务**，除非用户明确要求持久化跟踪
+3. **寻找规划位置** — 优先使用已有的 `docs/plans`、`docs/plan`、`docs/planning` 或等价项目约定
+4. **在该位置创建 `task_plan.md`、`findings.md` 和 `progress.md`**
+5. **决策前重新读取计划** — 在注意力窗口中刷新目标
+6. **每个阶段完成后更新** — 标记完成，记录错误
 
-> **注意：** 规划文件放在你的项目根目录，不是技能安装目录。
+> **注意：** 规划文件放在项目的规划文档位置，不是技能安装目录。文档 / 网站 / 内容仓库默认不要写入临时规划文件，除非用户明确要求持久化到仓库。
 
 ## 核心模式
 
@@ -103,7 +104,7 @@ $(command -v python3 || command -v python) "${SKILL_DIR}/scripts/session-catchup
 ## 关键规则
 
 ### 1. 先创建计划
-永远不要在没有 `task_plan.md` 的情况下开始复杂任务。没有例外。
+不要在没有 `task_plan.md` 的情况下开始大型、长时间、研究密集或容易跨上下文重置的任务。小任务保持轻量。
 
 ### 2. 两步操作规则
 > "每执行2次查看/浏览器/搜索操作后，立即将关键发现保存到文件中。"

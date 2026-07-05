@@ -62,24 +62,25 @@ Si el informe de recuperación muestra contexto no sincronizado:
 ## Importante: Ubicación de los archivos
 
 - Las **plantillas** están en `${CLAUDE_PLUGIN_ROOT}/templates/`
-- Tus **archivos de planificación** van en **tu directorio de proyecto**
+- Tus **archivos de planificación** van en la ubicación de documentación de planificación existente del proyecto cuando exista, como `docs/plans`, `docs/plan`, `docs/planning` o una carpeta docs específica de la función. Usa la raíz del proyecto solo por compatibilidad heredada o cuando el proyecto lo haga explícitamente.
 
 | Ubicación | Contenido |
 |------|---------|
 | Directorio del skill (`${CLAUDE_PLUGIN_ROOT}/`) | Plantillas, scripts, documentos de referencia |
-| Tu directorio de proyecto | `task_plan.md`, `findings.md`, `progress.md` |
+| Ubicación de planificación del proyecto | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Inicio rápido
 
-Antes de cualquier tarea compleja:
+Antes de una tarea que realmente se beneficie de planificación persistente:
 
-1. **Crear `task_plan.md`** — Consulta la plantilla [templates/task_plan.md](templates/task_plan.md)
-2. **Crear `findings.md`** — Consulta la plantilla [templates/findings.md](templates/findings.md)
-3. **Crear `progress.md`** — Consulta la plantilla [templates/progress.md](templates/progress.md)
-4. **Releer el plan antes de decidir** — Refresca los objetivos en la ventana de atención
-5. **Actualizar tras cada fase** — Marca completado, registra errores
+1. **Clasifica la tarea primero** — trivial / medium-light / large
+2. **Omite trabajo trivial** salvo que el usuario pida seguimiento persistente explícitamente
+3. **Encuentra la ubicación de planificación** — prefiere `docs/plans`, `docs/plan`, `docs/planning` o la convención equivalente del repo
+4. **Crea `task_plan.md`, `findings.md` y `progress.md`** en esa ubicación
+5. **Releer el plan antes de decidir** — Refresca los objetivos en la ventana de atención
+6. **Actualizar tras cada fase** — Marca completado, registra errores
 
-> **Nota:** Los archivos de planificación van en la raíz de tu proyecto, no en el directorio de instalación del skill.
+> **Nota:** Los archivos de planificación van en la ubicación de planificación del proyecto, no en el directorio de instalación del skill.
 
 ## Patrón central
 
@@ -101,7 +102,7 @@ Sistema de archivos = Disco (persistente, ilimitado)
 ## Reglas clave
 
 ### 1. Crear el plan primero
-Nunca comiences una tarea compleja sin `task_plan.md`. Sin excepciones.
+No empieces una tarea grande, larga, intensiva en investigación o propensa a reinicios de contexto sin `task_plan.md`. Mantén ligeras las tareas pequeñas.
 
 ### 2. Regla de dos operaciones
 > "Tras cada 2 operaciones de inspección/navegador/búsqueda, guarda inmediatamente los hallazgos clave en un archivo."

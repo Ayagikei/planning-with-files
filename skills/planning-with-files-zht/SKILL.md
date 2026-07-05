@@ -64,24 +64,25 @@ $(command -v python3 || command -v python) "${SKILL_DIR}/scripts/session-catchup
 ## 重要：檔案存放位置
 
 - **範本**在 `${CLAUDE_PLUGIN_ROOT}/templates/` 中
-- **你的規劃檔案**放在**你的專案目錄**中
+- **你的規劃檔案**優先放在專案既有的規劃文件位置，例如 `docs/plans`、`docs/plan`、`docs/planning` 或功能專屬 docs 目錄。只有為了相容舊專案，或專案明確把規劃檔案放在根目錄時，才使用專案根目錄。
 
 | 位置 | 存放內容 |
 |------|---------|
 | 技能目錄 (`${CLAUDE_PLUGIN_ROOT}/`) | 範本、腳本、參考文件 |
-| 你的專案目錄 | `task_plan.md`、`findings.md`、`progress.md` |
+| 專案規劃文件位置 | `task_plan.md`、`findings.md`、`progress.md` |
 
 ## 快速開始
 
-在任何複雜任務之前：
+在真正受益於持久化規劃的任務之前：
 
-1. **建立 `task_plan.md`** — 參考 [templates/task_plan.md](templates/task_plan.md) 範本
-2. **建立 `findings.md`** — 參考 [templates/findings.md](templates/findings.md) 範本
-3. **建立 `progress.md`** — 參考 [templates/progress.md](templates/progress.md) 範本
-4. **決策前重新讀取計畫** — 在注意力視窗中重新整理目標
-5. **每個階段完成後更新** — 標記完成，記錄錯誤
+1. **先分類任務** — trivial / medium-light / large
+2. **跳過瑣碎任務**，除非使用者明確要求持久化追蹤
+3. **尋找規劃位置** — 優先使用既有的 `docs/plans`、`docs/plan`、`docs/planning` 或等價專案慣例
+4. **在該位置建立 `task_plan.md`、`findings.md` 和 `progress.md`**
+5. **決策前重新讀取計畫** — 在注意力視窗中重新整理目標
+6. **每個階段完成後更新** — 標記完成，記錄錯誤
 
-> **注意：** 規劃檔案放在你的專案根目錄，不是技能安裝目錄。
+> **注意：** 規劃檔案放在專案的規劃文件位置，不是技能安裝目錄。文件 / 網站 / 內容倉庫預設不要寫入臨時規劃檔案，除非使用者明確要求持久化到倉庫。
 
 ## 核心模式
 
@@ -103,7 +104,7 @@ $(command -v python3 || command -v python) "${SKILL_DIR}/scripts/session-catchup
 ## 關鍵規則
 
 ### 1. 先建立計畫
-永遠不要在沒有 `task_plan.md` 的情況下開始複雜任務。沒有例外。
+不要在沒有 `task_plan.md` 的情況下開始大型、長時間、研究密集或容易跨上下文重置的任務。小任務保持輕量。
 
 ### 2. 兩步操作規則
 > "每執行2次查看/瀏覽器/搜尋操作後，立即將關鍵發現儲存到檔案中。"

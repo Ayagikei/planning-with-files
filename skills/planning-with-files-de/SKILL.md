@@ -62,24 +62,25 @@ Wenn der Wiederherstellungsbericht nicht synchronisierten Kontext meldet:
 ## Wichtig: Dateispeicherort
 
 - **Vorlagen** befinden sich in `${CLAUDE_PLUGIN_ROOT}/templates/`
-- **Deine Planungsdateien** kommen in **dein Projektverzeichnis**
+- **Deine Planungsdateien** kommen in den bestehenden Planungsdokumentationsort des Projekts, wenn es einen gibt, etwa `docs/plans`, `docs/plan`, `docs/planning` oder einen feature-spezifischen docs-Ordner. Verwende das Projektstammverzeichnis nur aus Legacy-Kompatibilität oder wenn das Projekt es ausdrücklich so hält.
 
 | Speicherort | Inhalt |
 |------|---------|
 | Skill-Verzeichnis (`${CLAUDE_PLUGIN_ROOT}/`) | Vorlagen, Skripte, Referenzdokumente |
-| Dein Projektverzeichnis | `task_plan.md`, `findings.md`, `progress.md` |
+| Planungsdokumentationsort des Projekts | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Schnellstart
 
-Vor jeder komplexen Aufgabe:
+Vor einer Aufgabe, die wirklich von persistenter Planung profitiert:
 
-1. **Erstelle `task_plan.md`** — Siehe Vorlage [templates/task_plan.md](templates/task_plan.md)
-2. **Erstelle `findings.md`** — Siehe Vorlage [templates/findings.md](templates/findings.md)
-3. **Erstelle `progress.md`** — Siehe Vorlage [templates/progress.md](templates/progress.md)
-4. **Lies den Plan vor Entscheidungen** — Frische Ziele im Aufmerksamkeitsfenster auf
-5. **Aktualisiere nach jeder Phase** — Markiere als abgeschlossen, protokolliere Fehler
+1. **Klassifiziere die Aufgabe zuerst** — trivial / medium-light / large
+2. **Überspringe triviale Arbeit**, außer der Benutzer möchte ausdrücklich persistentes Tracking
+3. **Finde den Planungsort** — bevorzuge vorhandene `docs/plans`, `docs/plan`, `docs/planning` oder eine gleichwertige Projektkonvention
+4. **Erstelle `task_plan.md`, `findings.md` und `progress.md`** an diesem Ort
+5. **Lies den Plan vor Entscheidungen** — Frische Ziele im Aufmerksamkeitsfenster auf
+6. **Aktualisiere nach jeder Phase** — Markiere als abgeschlossen, protokolliere Fehler
 
-> **Hinweis:** Planungsdateien kommen in dein Projektstammverzeichnis, nicht in das Skill-Installationsverzeichnis.
+> **Hinweis:** Planungsdateien kommen in den Planungsdokumentationsort des Projekts, nicht in das Skill-Installationsverzeichnis.
 
 ## Kernmuster
 
@@ -101,7 +102,7 @@ Dateisystem = Festplatte (persistent, unbegrenzt)
 ## Wichtige Regeln
 
 ### 1. Zuerst Plan erstellen
-Beginne niemals eine komplexe Aufgabe ohne `task_plan.md`. Keine Ausnahmen.
+Beginne keine große, lang laufende, rechercheintensive oder kontextverlustanfällige Aufgabe ohne `task_plan.md`. Halte kleine Aufgaben leichtgewichtig.
 
 ### 2. Zwei-Schritte-Regel
 > „Nach jeweils 2 Ansicht-/Browser-/Such-Operationen speichere wichtige Erkenntnisse sofort in einer Datei."

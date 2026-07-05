@@ -52,12 +52,12 @@ If catchup report shows unsynced context:
 ## Important: Where Files Go
 
 - **Templates** are in `.factory/skills/planning-with-files/templates/`
-- **Your planning files** go in **your project directory**
+- **Your planning files** go in the project’s existing planning-doc location when one exists, such as `docs/plans`, `docs/plan`, `docs/planning`, or a feature-specific docs folder. Use the project root only for legacy compatibility or when the project intentionally keeps planning files there.
 
 | Location | What Goes There |
 |----------|-----------------|
 | Skill directory (`.factory/skills/planning-with-files/`) | Templates, scripts, reference docs |
-| Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
+| Project planning-doc location | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## The Core Pattern
 
@@ -70,11 +70,12 @@ Filesystem = Disk (persistent, unlimited)
 
 ## Quick Start
 
-Before ANY complex task, create these three files:
+Before a task that genuinely benefits from persistent planning:
 
-1. **task_plan.md** — Track phases and progress
-2. **findings.md** — Store research and discoveries
-3. **progress.md** — Session log and test results
+1. **Classify the task first** — trivial / medium-light / large
+2. **Skip trivial work** unless the user explicitly wants persistent tracking
+3. **Find the planning location** — prefer existing `docs/plans`, `docs/plan`, `docs/planning`, or equivalent repo convention
+4. **Create `task_plan.md`, `findings.md`, and `progress.md`** in that location
 
 See [templates/](./templates/) for starting templates.
 
@@ -89,7 +90,7 @@ See [templates/](./templates/) for starting templates.
 ## Critical Rules
 
 ### 1. Create Plan First
-Never start a complex task without `task_plan.md`. Non-negotiable.
+Never start a large, long-running, research-heavy, or context-reset-prone task without `task_plan.md`. Keep small tasks lightweight.
 
 ### 2. The 2-Action Rule
 > "After every 2 view/browser/search operations, IMMEDIATELY save key findings to text files."

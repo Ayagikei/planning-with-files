@@ -59,24 +59,25 @@ If catchup report shows unsynced context:
 ## Important: Where Files Go
 
 - **Templates** are in `.cursor/skills/planning-with-files/templates/`
-- **Your planning files** go in **your project directory**
+- **Your planning files** go in the project’s existing planning-doc location when one exists, such as `docs/plans`, `docs/plan`, `docs/planning`, or a feature-specific docs folder. Use the project root only for legacy compatibility or when the project intentionally keeps planning files there.
 
 | Location | What Goes There |
 |----------|-----------------|
 | Skill directory (`.cursor/skills/planning-with-files/`) | Templates, scripts, reference docs |
-| Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
+| Project planning-doc location | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Quick Start
 
-Before ANY complex task:
+Before a task that genuinely benefits from persistent planning:
 
-1. **Create `task_plan.md`** — Use [templates/task_plan.md](templates/task_plan.md) as reference
-2. **Create `findings.md`** — Use [templates/findings.md](templates/findings.md) as reference
-3. **Create `progress.md`** — Use [templates/progress.md](templates/progress.md) as reference
-4. **Re-read plan before decisions** — Refreshes goals in attention window
-5. **Update after each phase** — Mark complete, log errors
+1. **Classify the task first** — trivial / medium-light / large
+2. **Skip trivial work** unless the user explicitly wants persistent tracking
+3. **Find the planning location** — prefer existing `docs/plans`, `docs/plan`, `docs/planning`, or equivalent repo convention
+4. **Create `task_plan.md`, `findings.md`, and `progress.md`** in that location
+5. **Re-read plan before decisions** — Refreshes goals in attention window
+6. **Update after each phase** — Mark complete, log errors
 
-> **Note:** Planning files go in your project root, not the skill installation folder.
+> **Note:** Planning files go in the project’s planning-doc location, not the skill installation folder. Do not create temporary planning files in a doc/content repo unless the user asked for persistent in-repo tracking.
 
 ## The Core Pattern
 
@@ -98,7 +99,7 @@ Filesystem = Disk (persistent, unlimited)
 ## Critical Rules
 
 ### 1. Create Plan First
-Never start a complex task without `task_plan.md`. Non-negotiable.
+Never start a large, long-running, research-heavy, or context-reset-prone task without `task_plan.md`. Keep small tasks lightweight.
 
 ### 2. The 2-Action Rule
 > "After every 2 view/browser/search operations, IMMEDIATELY save key findings to text files."

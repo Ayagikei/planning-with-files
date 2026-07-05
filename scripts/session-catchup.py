@@ -60,7 +60,8 @@ def get_project_dir_claude(project_path: str) -> Path:
         p = p[1].upper() + ':' + p[2:]
     if ':' in p or '\\' in p:
         try:
-            p = str(Path(p).resolve())
+            if os.name == 'nt':
+                p = str(Path(p).resolve())
         except (OSError, ValueError):
             pass
         sanitized = p.replace('\\', '-').replace('/', '-').replace(':', '-')

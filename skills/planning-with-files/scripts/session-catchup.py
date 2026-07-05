@@ -169,10 +169,15 @@ def normalize_path(project_path: str) -> str:
     if len(p) >= 3 and p[0] == '/' and p[2] == '/':
         p = p[1].upper() + ':' + p[2:]
 
-    # Resolve to absolute path to handle relative paths and symlinks
+    # Resolve to absolute path to handle relative paths and symlinks.
+    # On non-Windows hosts, strings like C:/Users/... are not Windows paths to
+    # pathlib; resolving them would incorrectly prepend the current directory.
     try:
-        resolved = str(Path(p).resolve())
-        # On Windows, resolve() returns C:\Users\... which is what we want
+        if os.name == 'nt':
+            resolved = str(Path(p).resolve())
+        else:
+            resolved = p
+        # On Windows, resolve() returns C:\Users\... which is what we want.
         if os.name == 'nt' or '\\' in resolved:
             p = resolved
     except (OSError, ValueError):

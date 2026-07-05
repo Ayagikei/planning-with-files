@@ -17,7 +17,7 @@
 
 [![Skills Playground](https://skillsplayground.com/badges/installs/othmanadi-planning-with-files-planning-with-files.svg)](https://skillsplayground.com/skills/othmanadi-planning-with-files-planning-with-files/)
 [![Downloads](https://skill-history.com/badge/othmanadi/planning-with-files.svg)](https://skill-history.com/othmanadi/planning-with-files)
-[![Version](https://img.shields.io/badge/version-3.1.3-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
+[![Version](https://img.shields.io/badge/version-3.2.0-brightgreen)](https://github.com/OthmanAdi/planning-with-files/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Closed Issues](https://img.shields.io/github/issues-closed/OthmanAdi/planning-with-files?color=success)](https://github.com/OthmanAdi/planning-with-files/issues?q=is%3Aissue+is%3Aclosed)
 [![Closed PRs](https://img.shields.io/github/issues-pr-closed/OthmanAdi/planning-with-files?color=success)](https://github.com/OthmanAdi/planning-with-files/pulls?q=is%3Apr+is%3Aclosed)
@@ -73,10 +73,11 @@ See the full list of everyone who made this project better in [CONTRIBUTORS.md](
 <details>
 <summary><strong>📦 Releases & Session Recovery</strong></summary>
 
-### Current Version: v3.1.3
+### Current Version: v3.2.0
 
 | Version | Highlights |
 |---------|------------|
+| **v3.2.0** | **Repository health audit: session-catchup.py was non-functional on Windows, plus the "0/0 phases" false status (closes #191, addresses #103, closes #188).** `session-catchup.py`, the mechanism behind "resume after `/clear`," never sanitized Windows-style paths correctly and had no explicit encoding on three reads, so it silently did nothing on Windows with no error. `inject-plan.sh`'s containment guard also silently dropped plan injection and tamper detection under 8.3 short-name or `/tmp`-aliased paths. Both fixed. Separately, `check-complete.sh`/`.ps1` and three IDE-specific Stop hooks reported a false "0/0 phases complete" for any `task_plan.md` without `### Phase` headings (#191, reported by @mixian939); fixed everywhere the pattern appeared, canonical scripts included. The `--template analytics` flag (v2.29.0) was silently falling back to default templates in every installed skill package; the analytics templates now actually ship where `init-session.sh` reads them. Merged PR #187 (@Stephen-abc: Windows test-encoding fixes, stale install-path docs) and PR #192 (@igorcosta: Autohand Code setup docs). Added `SECURITY.md` and enabled private vulnerability reporting (@AvitalAviv). Corrected `AGENTS.md`'s contributor-PR-merge guidance, which told agents to squash-merge in a way that reassigns authorship. Suite at 186 passed, 5 skipped, 0 failed. |
 | **v3.1.3** | **Hotfix: SKILL.md frontmatter was invalid YAML in v3.1.2.** The v3.1.2 description refresh added a colon, and the English SKILL.md keep `description` unquoted, so YAML rejected the frontmatter ("mapping values are not allowed here"), which could break skill loading and the model-triggering description. v3.1.3 quotes the description (matching the already-quoted translated variants; the parsed value is identical) across the canonical file and the seven English IDE variants, and adds `tests/test_skill_frontmatter_valid.py` to validate every SKILL.md frontmatter as YAML. Suite at 184 passed. |
 | **v3.1.2** | **Session-catchup command works outside the plugin runtime, `.hermes` parity, refreshed skill description** (PR #186 by @shunfeng8421 closes #185, reported by @xwang118). The documented Restore Context command used `${CLAUDE_PLUGIN_ROOT}`, which the plugin runtime sets only inside hook execution, so a skill-only install (`npx skills add`, Codex, Cursor) running it in a shell got an empty variable and a broken `/scripts/...` path. Now `SKILL_DIR="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/skills/planning-with-files}"` on the canonical file, `.codebuddy`, and the five language variants; the `.hermes` variant got the same fallback for `$HERMES_HOME`. The eight English SKILL.md descriptions were refreshed to lead with planning for AI coding agents and context-loss survival, with the `Use when` trigger and translated variants unchanged. Documentation only; suite at 180 passed. |
 | **v3.1.1** | **Codex verification command checks the canonical `hooks` feature flag** (PR #184 by @Fat-Jan). The `docs/codex.md` verify block ran `codex features list \| rg '^codex_hooks\s'`, but Codex moved its canonical feature key from `codex_hooks` to `hooks` in 0.129.0 (openai/codex#20522). The alias still resolves in config, yet `codex features list` prints only `hooks`, so the old pattern matched nothing on current Codex and routed correctly configured users to the upgrade path. The command now greps `^(hooks\|codex_hooks)\s` and the troubleshooting sentence covers both names, matching the `hooks = true` guidance carried in the file since v2.39.0. Documentation only; suite at 180 passed. |
@@ -148,7 +149,7 @@ When your context fills up and you run `/clear`, this skill **automatically reco
 </details>
 
 <details>
-<summary><strong>🛠️ Supported IDEs (17+ Platforms)</strong></summary>
+<summary><strong>🛠️ Supported IDEs (18+ Platforms)</strong></summary>
 
 #### Enhanced Support (hooks + lifecycle automation)
 
@@ -177,6 +178,7 @@ These IDEs implement the [Agent Skills](https://agentskills.io) open specificati
 | Continue | [Continue Setup](docs/continue.md) | `.continue/skills/` + [.prompt files](https://docs.continue.dev/customize/deep-dives/prompts) |
 | Pi Agent | [Pi Agent Setup](docs/pi-agent.md) | `.pi/skills/` ([npm package](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)) |
 | OpenClaw | [OpenClaw Setup](docs/openclaw.md) | `.openclaw/skills/` ([docs](https://docs.openclaw.ai/tools/skills)) |
+| Autohand Code | [Autohand Code Setup](docs/autohand.md) | `~/.autohand/skills/` or `.autohand/skills/` |
 | Antigravity | [Antigravity Setup](docs/antigravity.md) | `.agent/skills/` ([docs](https://codelabs.developers.google.com/getting-started-with-antigravity-skills)) |
 | Kilocode | [Kilocode Setup](docs/kilocode.md) | `.kilocode/skills/` ([docs](https://kilo.ai/docs/agent-behavior/skills)) |
 | AdaL CLI (Sylph AI) | [AdaL Setup](docs/adal.md) | `.adal/skills/` ([docs](https://docs.sylph.ai/features/plugins-and-skills)) |
@@ -256,7 +258,7 @@ npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zht -g
 
 </details>
 
-Works with Claude Code, Cursor, Codex, Gemini CLI, and 40+ agents supporting the [Agent Skills](https://agentskills.io) spec.
+Works with Claude Code, Cursor, Codex, Gemini CLI, Autohand Code, and 40+ agents supporting the [Agent Skills](https://agentskills.io) spec.
 
 <details>
 <summary><strong>🔧 Claude Code Plugin (Advanced Features)</strong></summary>

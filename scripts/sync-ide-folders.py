@@ -33,6 +33,8 @@ TEMPLATES = [
     "templates/findings.md",
     "templates/progress.md",
     "templates/task_plan.md",
+    "templates/analytics_task_plan.md",
+    "templates/analytics_findings.md",
 ]
 
 REFERENCES = [

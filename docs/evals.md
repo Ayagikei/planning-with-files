@@ -1,6 +1,6 @@
-# Benchmark Results — planning-with-files v2.22.0
+# Benchmark Results: planning-with-files
 
-Formal evaluation of `planning-with-files` using Anthropic's [skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator) framework. This document records the full methodology, test cases, grading criteria, and results.
+Formal evaluation of `planning-with-files` using Anthropic's [skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator) framework, plus later functional verification of v3-specific mechanisms. This document records the full methodology, test cases, grading criteria, and results. Tests 1 through 3 were run against v2.22.0 (2026-03-06); Test 4 was run against v3.2.0 (2026-07-03).
 
 ---
 
@@ -136,6 +136,52 @@ Requires `ANTHROPIC_API_KEY` in the eval environment. Per the project's eval sta
 
 ---
 
+## Test 4: v3 Long-Running Session Functional Verification (2026-07-03)
+
+Tests 1 through 3 measure whether the skill enforces the 3-file planning pattern. They predate v3.0.0 (2026-06-09) and say nothing about v3's own headline feature: surviving `/clear` and context compaction across a long-running session. This section covers that mechanism specifically, added after a repository health audit found it was silently broken on Windows.
+
+### Method
+
+Rather than reading the code and assuming it worked, each mechanism was run directly in a scratch directory on a real Windows machine (Git Bash and PowerShell, both), with real files and real tampering, checking actual command output against expectations.
+
+### Scope
+
+| Mechanism | Script | What it does |
+|-----------|--------|---------------|
+| Session init | `init-session.sh` / `.ps1` | Creates `task_plan.md`, `findings.md`, `progress.md` from templates |
+| Phase status | `check-complete.sh` / `.ps1` | Counts phases, reports completion |
+| Attestation | `attest-plan.sh` / `.ps1` | SHA-256 locks plan content, detects tampering |
+| Plan injection | `inject-plan.sh` | Re-injects plan context into the model turn, enforces the attestation |
+| Parallel plans | `resolve-plan-dir.sh` / `.ps1` | Resolves the active plan directory across concurrent sessions |
+| Session recovery | `session-catchup.py` | Reconstructs unsynced context after `/clear`, the actual "long-running session" mechanism |
+
+### Result: 2 of 6 mechanisms were broken on Windows, silently
+
+**`session-catchup.py` did nothing on Windows.** Two independent bugs, either one alone sufficient to break it:
+
+1. The path sanitizer only replaced forward slashes. A Windows path (`C:\Users\...` or Git Bash's `/c/Users/...`) never matched Claude's actual project-directory naming, so the function always returned before finding any sessions to scan.
+2. Three file reads had no explicit encoding, so any session log containing non-ASCII text raised `UnicodeDecodeError` against Windows' default `cp1252` codec, an error the surrounding `except` clauses swallowed without a trace.
+
+Neither failure printed anything. A user running this on Windows would see no catchup report and have no reason to suspect the mechanism was even running, let alone why it produced nothing. `tests/test_path_fix.py` contained a working reimplementation of the correct fix but never imported or exercised the actual shipped script, so the test suite reported green the entire time.
+
+**`inject-plan.sh`'s containment guard silently dropped plan injection under aliased paths.** The guard canonicalizes the project root and the candidate plan directory separately, then checks that one is a prefix of the other. On a Windows account with an 8.3 short-name `TEMP` (this test machine's own account is one such case) or a path reached through the MSYS `/tmp` mount, the two canonicalization routes land on differently-spelled versions of the same directory, the prefix check fails, and the hook exits with zero output: no plan re-injection, no tamper warning, nothing. `resolve-plan-dir.sh` does not have this bug because it builds its candidates as absolute paths from the start; that asymmetry is what pointed at the fix.
+
+### What worked correctly, unmodified
+
+Session init, phase-status counting, attestation lock/show/clear, tamper detection logic itself (once the injection guard reaches it), and parallel-plan directory resolution (`$PLAN_ID` env var, `.active_plan` file, newest-mtime fallback) all produced correct output in both Git Bash and PowerShell, including the v3 autonomous-mode chain (nonce-framed delimiters, unattested-plan refusal, per-tool-call injection suppression).
+
+One asymmetry noted but not a bug: `init-session.ps1` has no slug mode (it always writes to the project root), only `init-session.sh` creates `.planning/<slug>/` directories. And there is no `inject-plan.ps1`; the injection and tamper-enforcement hook body is sh-only, so a pure-PowerShell host without Git Bash gets no plan injection or tamper enforcement at all.
+
+### Fixed in v3.2.0
+
+Both `session-catchup.py` and `inject-plan.sh` were fixed (see CHANGELOG). Re-running the same sequence after the fix confirmed session-catchup now produces a correct catchup report from real session logs, and plan injection now reaches the tamper-check branch under the same aliased-path conditions that previously went silent. The PowerShell-only injection gap and the `init-session.ps1` slug-mode asymmetry are open follow-ups, not addressed in this cycle.
+
+### A caveat on what session-catchup actually does, working or not
+
+Even fixed, `session-catchup.py` replays conversation transcript from the previous session; it does not parse or reconstruct the on-disk phase state directly. Its own "RECOMMENDED" output tells the agent to go read `task_plan.md`, `progress.md`, and `findings.md` itself. It is a conversation catchup that points at the files, not a plan-state reconstruction, and its usefulness is bounded by how much relevant discussion happened after the last planning-file edit.
+
+---
+
 ## Summary
 
 | Test | Status | Result |
@@ -143,8 +189,9 @@ Requires `ANTHROPIC_API_KEY` in the eval environment. Per the project's eval sta
 | Evals + Benchmark | ✅ Complete | 96.7% (with_skill) vs 6.7% (without_skill) |
 | A/B Blind Comparison | ✅ Complete | 3/3 wins (100%) for with_skill |
 | Description Optimizer | Pending | Scheduled for next eval cycle |
+| v3 Long-Running Session Functional Verification | ✅ Complete (2026-07-03) | 2 of 6 mechanisms found broken on Windows and fixed in v3.2.0; see Test 4 |
 
-The skill demonstrably enforces the 3-file planning pattern across diverse task types. Without the skill, agents default to ad-hoc file naming and skip the structured planning workflow entirely.
+The skill demonstrably enforces the 3-file planning pattern across diverse task types. Without the skill, agents default to ad-hoc file naming and skip the structured planning workflow entirely. Separately, v3's session-recovery mechanism is now verified functional on Windows as of v3.2.0; it was not before, and nothing in the test suite would have caught that on its own.
 
 ---
 

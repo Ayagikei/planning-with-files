@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2026-07-03
+
+A repository health audit covering the v3 long-running-session mechanism, the
+open issue backlog, and two community pull requests. The headline finding:
+`session-catchup.py`, the mechanism behind "resume after /clear," did nothing
+on Windows. Both that and a related silent-injection bug are fixed here,
+along with the false "0/0 phases" status reported in #191.
+
+### Fixed
+
+- **`session-catchup.py` was non-functional on Windows** (the "resume after /clear" feature). `get_project_dir_claude` only replaced forward slashes, so a Windows-style path (`C:\Users\...` or Git Bash's `/c/Users/...`) never sanitized to Claude's actual project-directory name, and the function always returned early with no output and no error. Three `open()` calls also had no explicit encoding, so a session log containing any non-ASCII text raised `UnicodeDecodeError` on Windows' default `cp1252` codec, an error the surrounding `except` clauses swallowed silently. Fixed by detecting Windows-shaped paths before sanitizing and adding `encoding='utf-8', errors='replace'` to the three reads; genuine Unix absolute paths take the same code path as before. `tests/test_path_fix.py` previously reimplemented the sanitizer instead of importing the real module, so the suite stayed green while the shipped script stayed broken; it now imports and exercises the actual function.
+- **`inject-plan.sh`'s containment guard silently dropped plan injection and tamper detection under aliased paths.** `is_within_root()` canonicalized the project root from the `$PWD` string but canonicalized candidates from a relative path, and on a Windows account with an 8.3 short-name `TEMP` (or any path reached through the MSYS `/tmp` mount), the two resolve to differently-spelled versions of the same directory. The prefix-match check then failed and the hook exited with zero output: no plan re-injection, no tamper warning, nothing visible. Fixed by canonicalizing the root the same way candidates already are.
+- **Task plans without `### Phase` headings falsely reported "0/0 phases complete"** (#191, reported by @mixian939 against Codex). `check-complete.sh`/`.ps1` and several IDE-specific Stop hooks counted `### Phase` headings but never checked whether the count was zero before reporting a status, so an unstructured `task_plan.md` produced a false "Task in progress (0/0 phases complete)" message, or in Cursor and GitHub Copilot's adapters an auto-continue nudge to keep working on a plan that was never structured to begin with. Fixed with a `TOTAL=0` guard everywhere the pattern appeared: the canonical Claude Code scripts, `.codex`, `.cursor`, GitHub Copilot's `agent-stop.sh`, all `sync-ide-folders.py`-managed IDE mirrors, the five language-variant skills, and the standalone `.kiro` copy.
+- **`--template analytics` silently produced the default templates instead of the analytics-specific ones** (addresses #103). `templates/analytics_task_plan.md` and `templates/analytics_findings.md` (added v2.29.0) were never copied into `skills/planning-with-files/templates/`, the directory the installed skill package actually reads, so every plugin or skill-only install fell back to the generic templates. Copied both files into the canonical templates directory and added them to `sync-ide-folders.py`'s sync list, backfilling seven IDE mirrors.
+- **Windows test suite encoding errors and stale installation docs** (PR #187 by @Stephen-abc). `subprocess.run`/`Popen` calls across 15 test files had no explicit encoding, which raises `UnicodeDecodeError` on Windows accounts whose default codepage isn't UTF-8. `docs/adal.md`, `docs/antigravity.md`, `docs/kilocode.md`, and `docs/openclaw.md` also referenced `.adal/`, `.agent/`, and `.kilocode/` source paths removed in v2.24.0, and antigravity.md's templates were mislabeled as living in `references/` instead of `templates/`. Fixed the same mislabel in `docs/codebuddy.md`, which was outside PR #187's scope.
+- **Hermes adapter test failed on Windows accounts with an 8.3-short-name `TEMP`.** The test compared a `Path.resolve()`-canonicalized production result against an unresolved expected path, so accounts where `TEMP` itself resolves to a short-name alias (`OASRVA~1` vs the real account name) failed a test that was actually passing correctly. Resolved the expected side the same way.
+- **`AGENTS.md` told agents to squash-merge contributor PRs.** `git merge --squash` reassigns the contributor's commit authorship to whoever runs the local commit: the exact mistake this project's release protocol already exists to prevent (v2.40.1 cycle). Replaced with cherry-pick / `gh pr merge --rebase` guidance, matching CLAUDE.md. Also documented that `.pi` and `.kiro` lag the parity-locked version bump alongside `.continue` and `.gemini`, which recent CHANGELOG entries already assumed AGENTS.md said.
+
+### Added
+
+- **`docs/autohand.md`** (PR #192 by @igorcosta): setup guide for Autohand Code, added to the supported-IDEs table (18+ platforms).
+- **`SECURITY.md`** and GitHub private vulnerability reporting enabled (closes #188, requested by @AvitalAviv).
+
+### Changed
+
+- Version bumped to 3.2.0 across the 17 parity-locked files via `scripts/bump-version.py`. `.continue`, `.gemini`, `.pi`, and `.kiro` lag intentionally, now documented in AGENTS.md itself.
+
+### Verification
+
+- Python suite: 186 passed, 5 skipped, 0 failed (up from 184/4/0; two new path-sanitizer tests in `test_path_fix.py`).
+- `scripts/sync-ide-folders.py --verify`: all IDE folders in sync.
+- Functionally re-verified the long-running-session mechanism end to end on Windows after the fixes: init, check-complete, attestation lock/tamper-detect/clear, parallel-plan resolution, and session-catchup all confirmed working in both sh and PowerShell.
+- Supply-chain review on both merged PRs: docs and test files only, no dependency, install script, or bin shim in either.
+
+### Thanks
+
+- @mixian939 for the detailed #191 report and root-cause diagnosis against Codex, which led to finding and fixing the same defect in the canonical scripts and two other IDE adapters.
+- @Stephen-abc (Wang Jun) for the Windows test encoding fix and installation doc corrections (PR #187).
+- @igorcosta (Igor Costa, Autohand) for the Autohand Code setup docs (PR #192).
+- @AvitalAviv for flagging the missing private vulnerability disclosure channel (#188).
+- @mvanhorn for the original analytics templates (v2.29.0, #103) that this release finally ships into the installed skill package.
+
 ## [3.1.3] - 2026-06-16
 
 A hotfix for a frontmatter regression introduced in v3.1.2. The refreshed description shipped in v3.1.2 contains a colon, and the English SKILL.md carry the `description` field unquoted, so the frontmatter became invalid YAML. This release quotes the description and adds a test that validates every SKILL.md frontmatter as YAML, so the class cannot ship again.

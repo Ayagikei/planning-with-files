@@ -25,6 +25,11 @@ fi
 : "${IN_PROGRESS:=0}"
 : "${PENDING:=0}"
 
+# issue #191: TOTAL=0 -> not phase-structured, stay silent
+if [ "$TOTAL" -eq 0 ]; then
+    exit 0
+fi
+
 if [ "$COMPLETE" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
   echo "[planning-with-files] ALL PHASES COMPLETE ($COMPLETE/$TOTAL)."
 else

@@ -25,6 +25,12 @@ fi
 : "${IN_PROGRESS:=0}"
 : "${PENDING:=0}"
 
+# issue #191: a task_plan.md with no "### Phase" headings is not phase-structured.
+# Without this guard the hook emits a false "0/0 phases complete" followup_message.
+if [ "$TOTAL" -eq 0 ]; then
+    exit 0
+fi
+
 if [ "$COMPLETE" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
     echo "{\"followup_message\": \"[planning-with-files] ALL PHASES COMPLETE ($COMPLETE/$TOTAL). If the user has additional work, add new phases to task_plan.md before starting.\"}"
     exit 0

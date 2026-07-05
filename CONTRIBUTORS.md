@@ -275,6 +275,16 @@ These amazing people have contributed code, documentation, or significant improv
   - Linked the upstream OpenAI page so the canonical key change was easy to verify
   - **Impact:** v2.39.0 swaps the docs to `hooks = true` in four sites with an alias note, so new users get the canonical key while users on older configs are not pushed to migrate
 
+- **[@Stephen-abc](https://github.com/Stephen-abc)** (Wang Jun) - [PR #187](https://github.com/OthmanAdi/planning-with-files/pull/187)
+  - Fixed `UnicodeDecodeError` across 15 test files by adding explicit `encoding="utf-8"` to `subprocess.run`/`Popen` calls, which fail on Windows accounts whose default codepage isn't UTF-8
+  - Corrected `docs/adal.md`, `docs/antigravity.md`, `docs/kilocode.md`, and `docs/openclaw.md`, which referenced IDE-specific source folders (`.adal/`, `.agent/`, `.kilocode/`) removed in v2.24.0, and fixed a `references/` versus `templates/` mislabel in antigravity.md
+  - **Impact:** v3.2.0 test suite is now robust on non-UTF-8-default Windows accounts, and four installation guides point at paths that actually exist
+
+- **[@igorcosta](https://github.com/igorcosta)** (Igor Costa, Autohand) - [PR #192](https://github.com/OthmanAdi/planning-with-files/pull/192)
+  - Added `docs/autohand.md`, a setup guide for Autohand Code covering user-level and project-level Agent Skills installs
+  - Added Autohand Code to the README's supported-IDEs table
+  - **Impact:** planning-with-files now documents a supported install path for Autohand Code alongside the other 17+ platforms
+
 ## Community Forks
 
 These developers have created forks that extend the functionality:
@@ -299,6 +309,8 @@ Thank you to everyone who reported issues, provided feedback, and helped test fi
 - [@st01cs](https://github.com/st01cs) - Issue #28 (Devis fork discussion)
 - [@wqh17101](https://github.com/wqh17101) - Issue #11 testing and confirmation
 - [@luyanfeng](https://github.com/luyanfeng) - Issue #172 (OpenCode install/verify paths doubled the folder segment in docs/opencode.md; fixed in v2.43.0)
+- [@mixian939](https://github.com/mixian939) - Issue #191 (Codex hooks reporting a false "0/0 phases complete" status for an unstructured task_plan.md, with a full root-cause diagnosis and suggested fix; the audit this triggered found and fixed the same defect in the canonical scripts and two other IDE adapters, fixed in v3.2.0)
+- [@AvitalAviv](https://github.com/AvitalAviv) - Issue #188 (flagged that the repo had no private vulnerability disclosure channel; private vulnerability reporting is now enabled and documented in SECURITY.md)
 
 And many others who have starred, forked, and shared this project!
 
@@ -326,6 +338,6 @@ If you've contributed and don't see your name here, please open an issue! We wan
 
 ---
 
-**Total Contributors:** 46+ and growing!
+**Total Contributors:** 50+ and growing!
 
-*Last updated: June 13, 2026*
+*Last updated: July 3, 2026*

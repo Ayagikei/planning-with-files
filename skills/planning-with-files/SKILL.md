@@ -1,6 +1,6 @@
 ---
 name: planning-with-files
-description: "Manus-style persistent file-based planning for AI coding agents: keeps task_plan.md, findings.md, and progress.md on disk so work survives context loss and /clear. Use when asked to plan out, break down, or organize a multi-step project, research task, or any work requiring 5+ tool calls. Supports automatic session recovery after /clear."
+description: "Use when the user explicitly requests planning-with-files or when a large, long-running, research-heavy task needs durable recovery across context resets"
 user-invocable: true
 allowed-tools: "Read Write Edit Bash Glob Grep"
 hooks:
@@ -34,6 +34,19 @@ metadata:
 # Planning with Files
 
 Work like Manus: Use persistent markdown files as your "working memory on disk."
+
+## Artifact boundary
+
+This skill tracks execution state; it is not another design or implementation
+plan author. Keep one canonical product artifact:
+
+- Standard work may combine design and implementation in `delivery-plan.md`.
+- Heavy work may keep `design.md` and `implementation-plan.md` separate.
+- `task_plan.md` links those artifacts and records phases/status only.
+- `findings.md` stores new evidence and unresolved discoveries, not copied requirements.
+- `progress.md` stores actions, errors, and validation results, not plan prose.
+
+Do not create these files for trivial work or from a raw tool-call count alone.
 
 ## FIRST: Restore Context (v2.2.0)
 
@@ -73,8 +86,8 @@ If catchup report shows unsynced context:
 
 Before a task that genuinely benefits from persistent planning:
 
-1. **Classify the task first** — trivial / medium-light / large
-2. **Skip trivial work** unless the user explicitly wants persistent tracking
+1. **Classify the task first** — trivial / standard / heavy
+2. **Use only for explicit requests or durable-recovery value** — tool count alone is not a trigger
 3. **Find the planning location** — prefer existing `docs/plans`, `docs/plan`, `docs/planning`, or equivalent repo convention
 4. **Create `task_plan.md`, `findings.md`, and `progress.md`** in that location
 5. **Re-read plan before decisions** — Refreshes goals in attention window
@@ -95,9 +108,9 @@ Filesystem = Disk (persistent, unlimited)
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
-| `task_plan.md` | Phases, progress, decisions | After each phase |
-| `findings.md` | Research, discoveries | After ANY discovery |
-| `progress.md` | Session log, test results | Throughout session |
+| `task_plan.md` | Goal, phases/status, canonical artifact links | After each phase |
+| `findings.md` | Research evidence and unresolved discoveries | After a material discovery |
+| `progress.md` | Actions, files, errors, and validation results | Throughout execution |
 
 ## Critical Rules
 
@@ -114,12 +127,12 @@ Before major decisions, read the plan file. This keeps goals in your attention w
 
 ### 4. Update After Act
 After completing any phase:
-- Mark phase status: `in_progress` → `complete`
-- Log any errors encountered
-- Note files created/modified
+- Mark phase status in `task_plan.md`: `in_progress` → `complete`
+- Record actions, files changed, errors, and validation in `progress.md`
+- Record new evidence or unresolved discoveries in `findings.md`
 
 ### 5. Log ALL Errors
-Every error goes in the plan file. This builds knowledge and prevents repetition.
+Every error goes in `progress.md`. This builds knowledge and prevents repetition.
 
 ```markdown
 ## Errors Encountered
@@ -192,16 +205,16 @@ If you can answer these, your context management is solid:
 ## When to Use This Pattern
 
 **Use for:**
-- Multi-step tasks (3+ steps)
-- Research tasks
-- Building/creating projects
-- Tasks spanning many tool calls
-- Anything requiring organization
+- Explicit user requests for planning-with-files
+- Large or long-running multi-phase work
+- Research-heavy work whose evidence must survive compaction
+- Unattended work or tasks likely to span context resets
 
 **Skip for:**
 - Simple questions
 - Single-file edits
 - Quick lookups
+- Standard tasks that already fit in one canonical delivery plan and the current context
 
 ## Templates
 

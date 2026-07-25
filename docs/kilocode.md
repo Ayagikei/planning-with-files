@@ -166,7 +166,7 @@ $env:USERPROFILE\.kilocode\skills\planning-with-files\scripts\check-complete.ps1
 .\.kilocode\skills\planning-with-files\scripts\check-complete.ps1
 ```
 
-## Migrating from Cursor/Windsurf
+## Migrating from Cursor/Windsurf (Windsurf became Devin Desktop in June 2026)
 
 Planning files are fully compatible. Simply copy your `task_plan.md`, `findings.md`, and `progress.md` files to your new project.
 

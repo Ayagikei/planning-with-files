@@ -204,6 +204,21 @@ class InjectPlanBehaviorTests(unittest.TestCase):
         self.assertIn("Legacy Root Plan", result.stdout)
         self.assertIn("ACTIVE PLAN", result.stdout)
 
+    def test_docs_planning_feature_plan_is_injected(self) -> None:
+        plan_dir = self.tmp / "docs" / "planning" / "feature-a"
+        plan_dir.mkdir(parents=True)
+        (plan_dir / "task_plan.md").write_text(
+            "# Docs Planning Feature\n",
+            encoding="utf-8",
+        )
+        (plan_dir / "progress.md").write_text("# progress\n", encoding="utf-8")
+
+        result = self._run("userprompt")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Docs Planning Feature", result.stdout)
+        self.assertIn("ACTIVE PLAN", result.stdout)
+
     def test_no_plan_anywhere_silent_exit_zero(self) -> None:
         result = self._run("userprompt")
         self.assertEqual(0, result.returncode, result.stderr)

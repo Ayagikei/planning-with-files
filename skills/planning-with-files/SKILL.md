@@ -7,28 +7,28 @@ hooks:
   UserPromptSubmit:
     - hooks:
         - type: command
-          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=userprompt; exit 0"
+          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.codex/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=userprompt; exit 0"
   PreToolUse:
     - matcher: "Write|Edit|Bash|Read|Glob|Grep"
       hooks:
         - type: command
-          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=pretool; exit 0"
+          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.codex/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=pretool; exit 0"
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "if [ -f task_plan.md ] || [ -f .planning/.active_plan ] || ls .planning/*/task_plan.md >/dev/null 2>&1; then echo '[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status.'; fi"
+          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/resolve-plan-dir.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/resolve-plan-dir.sh\" \"$HOME/.codex/skills/planning-with-files/scripts/resolve-plan-dir.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/resolve-plan-dir.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/resolve-plan-dir.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/resolve-plan-dir.sh\" 2>/dev/null | head -1); DIR=\"\"; [ -n \"$SH\" ] && [ -f \"$SH\" ] && DIR=$(sh \"$SH\" 2>/dev/null); if [ -n \"$DIR\" ] || [ -f task_plan.md ]; then echo '[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status.'; fi"
   Stop:
     - hooks:
         - type: command
-          command: "SKILL_PS1=\"${CLAUDE_SKILL_DIR}/scripts/check-complete.ps1\"; SKILL_SH=\"${CLAUDE_SKILL_DIR}/scripts/gate-stop.sh\"; KNOWN_PS1=$(ls \"$HOME/.claude/skills/planning-with-files/scripts/check-complete.ps1\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/check-complete.ps1\" 2>/dev/null | head -1); KNOWN_SH=$(ls \"$HOME/.claude/skills/planning-with-files/scripts/gate-stop.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/gate-stop.sh\" 2>/dev/null | head -1); TARGET_PS1=\"${SKILL_PS1:-$KNOWN_PS1}\"; TARGET_SH=\"${SKILL_SH:-$KNOWN_SH}\"; if [ -n \"$TARGET_PS1\" ] && [ -f \"$TARGET_PS1\" ]; then powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File \"$TARGET_PS1\" -Gate 2>/dev/null; elif [ -n \"$TARGET_SH\" ] && [ -f \"$TARGET_SH\" ]; then sh \"$TARGET_SH\" 2>/dev/null; fi"
+          command: "PS1_T=\"${CLAUDE_SKILL_DIR}/scripts/check-complete.ps1\"; [ -f \"$PS1_T\" ] || PS1_T=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/check-complete.ps1\" \"$HOME/.codex/skills/planning-with-files/scripts/check-complete.ps1\" \"$HOME/.claude/skills/planning-with-files/scripts/check-complete.ps1\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/check-complete.ps1\" \"$HOME/.opencode/skills/planning-with-files/scripts/check-complete.ps1\" 2>/dev/null | head -1); SH_T=\"${CLAUDE_SKILL_DIR}/scripts/gate-stop.sh\"; [ -f \"$SH_T\" ] || SH_T=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/gate-stop.sh\" \"$HOME/.codex/skills/planning-with-files/scripts/gate-stop.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/gate-stop.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/gate-stop.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/gate-stop.sh\" 2>/dev/null | head -1); case \"$(uname -s 2>/dev/null)\" in MINGW*|MSYS*|CYGWIN*) if [ -n \"$PS1_T\" ] && [ -f \"$PS1_T\" ]; then powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File \"$PS1_T\" -Gate 2>/dev/null; elif [ -n \"$SH_T\" ] && [ -f \"$SH_T\" ]; then sh \"$SH_T\" 2>/dev/null; fi ;; *) if [ -n \"$SH_T\" ] && [ -f \"$SH_T\" ]; then sh \"$SH_T\" 2>/dev/null; elif [ -n \"$PS1_T\" ] && [ -f \"$PS1_T\" ]; then powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File \"$PS1_T\" -Gate 2>/dev/null; fi ;; esac; exit 0"
   PreCompact:
     - matcher: "*"
       hooks:
         - type: command
-          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=precompact; exit 0"
+          command: "SH=\"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\"; [ -f \"$SH\" ] || SH=$(ls \"$HOME/.agents/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.codex/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/inject-plan.sh\" 2>/dev/null | head -1); [ -n \"$SH\" ] && [ -f \"$SH\" ] && sh \"$SH\" --context=precompact; exit 0"
 metadata:
-  version: "3.2.0"
+  version: "3.8.2"
 ---
 
 # Planning with Files
@@ -131,6 +131,8 @@ After completing any phase:
 - Record actions, files changed, errors, and validation in `progress.md`
 - Record new evidence or unresolved discoveries in `findings.md`
 
+Whenever a phase status changes, also refresh `## Next Step` in `task_plan.md` so it names the single next action.
+
 ### 5. Log ALL Errors
 Every error goes in `progress.md`. This builds knowledge and prevents repetition.
 
@@ -201,6 +203,7 @@ If you can answer these, your context management is solid:
 | What's the goal? | Goal statement in plan |
 | What have I learned? | findings.md |
 | What have I done? | progress.md |
+| What am I about to do? | Next Step in task_plan.md |
 
 ## When to Use This Pattern
 
@@ -230,10 +233,11 @@ Helper scripts for automation:
 
 - `scripts/init-session.sh` — Initialize planning files. With a name arg, creates an isolated plan under `.planning/YYYY-MM-DD-<slug>/` for parallel task workflows. Without args, writes `task_plan.md` at project root (legacy mode, backward-compatible).
 - `scripts/set-active-plan.sh` — Switch the active plan pointer (`.planning/.active_plan`). Run with a plan ID to switch; run without args to show which plan is current.
-- `scripts/resolve-plan-dir.sh` — Resolve the active plan directory. Checks `$PLAN_ID` env var first, then `.planning/.active_plan`, then newest plan dir by mtime, then falls back to project root (legacy). Used internally by hooks.
+- `scripts/resolve-plan-dir.sh` — Resolve the active plan directory. Checks `$PLAN_ID`, `.planning/.active_plan`, newest `.planning/` plan, then bounded `docs/plans` / `docs/plan` / `docs/planning` locations before the legacy project-root fallback. Used internally by hooks.
 - `scripts/check-complete.sh` — Verify all phases in the active plan are complete.
 - `scripts/session-catchup.py` — Recover context from a previous session after `/clear` (v2.2.0).
 - `scripts/attest-plan.sh` (and `.ps1`) — Lock the current `task_plan.md` content with a SHA-256 attestation (v2.37.0). Hooks then refuse to inject plan content if the file diverges from the attested hash. Use `--show` to print the stored hash, `--clear` to remove the attestation. See `/plan-attest` command.
+- `scripts/plan-doctor.sh` — One-pass self-check for the mechanisms that fail silently (v3.6.0): plan resolution, hook injection, canonicalizer path shape, attestation state, install surfaces, per-fire hook latency. Run it whenever hooks seem quiet or after installing on a new machine. See `/plan-doctor` command.
 
 ### Parallel task workflow
 
@@ -314,7 +318,7 @@ For skill-only installs (no `commands/` folder) or sessions where the slash comm
 
 **Manual `/plan-goal` procedure:**
 
-1. Resolve the active plan: prefer `${PLAN_ID}` env var, then `.planning/.active_plan`, then newest `.planning/<dir>/`, then legacy `./task_plan.md`.
+1. Resolve the active plan: prefer `${PLAN_ID}`, then `.planning/.active_plan`, newest `.planning/<dir>/`, bounded docs planning locations, then legacy `./task_plan.md`.
 2. Read the resolved `task_plan.md`.
 3. Compose a goal condition. Default: `"all phases in task_plan.md report Status: complete and check-complete.sh reports ALL PHASES COMPLETE"`. If the user passed additional clauses, append them.
 4. Issue Claude Code's native `/goal <condition>` (CC primitive, always available).
@@ -368,6 +372,10 @@ With no `.mode` file and no other v3 marker, the hooks produce byte-identical ou
 Autonomous mode answers the recitation question: strong models drift less, so the per-tool-call plan re-injection (the +68% token tax measured in the v2.21 eval) is dropped. Turn-start injection stays because the evidence (arxiv 2603.03258, claudefa.st on Opus 4.7+ subagents) shows drift is real and the full plan file still matters once per turn. Eliminating recitation entirely is not supported by evidence.
 
 Gated mode adds the completion gate on top of autonomous behavior. The gate is the termination oracle: it judges the plan artifact on disk, not the conversation transcript, which is why it beats a transcript-bound evaluator that can be hallucinated.
+
+### Structure-aware injection (v3.8.0, opt-in)
+
+The default injection is `head -50` (turn start) and `head -30` (per tool call), which is position-blind: late in a long plan the active phase can sit past the injected window, so every injection pays the token cost without carrying the resume point. Opt in with `PWF_INJECT=smart` in the environment, or an `inject-smart` token in the plan's `.mode` file, and the injection instead emits the plan title, Goal / Next Step / Current Phase, a phase count, and the full first in_progress phase section. Legacy plans that still contain a `Decisions Made` journal also include its last three rows; new fork templates keep product decisions in the canonical delivery/design artifact. Plans without `### Phase` headings fall back to the plain head. `inject-smart` alone does not activate any other v3 behavior; it composes with autonomous and gated modes (`init-session` mode tokens are space-separated in `.mode`). With neither the env var nor the token present, output is byte-identical to the legacy shape.
 
 ### Gate decision table
 

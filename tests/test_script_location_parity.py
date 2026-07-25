@@ -45,8 +45,10 @@ DUAL_SHIPPED = [
     "ledger-summary.sh",
     "phase-status.ps1",
     "phase-status.sh",
+    "plan-doctor.sh",
     "resolve-plan-dir.ps1",
     "resolve-plan-dir.sh",
+    "session-catchup.py",
     "set-active-plan.ps1",
     "set-active-plan.sh",
 ]
@@ -78,6 +80,28 @@ class ScriptLocationParityTests(unittest.TestCase):
                     f"{name} drifted between scripts/ and skill scripts/ — "
                     "the two install routes would behave differently",
                 )
+
+    def test_hook_surfaces_dispatch_to_canonical_scripts(self) -> None:
+        canonical = (
+            REPO_ROOT / "skills" / "planning-with-files" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        canonical_hooks = canonical.split("hooks:\n", 1)[1].split(
+            "metadata:\n", 1
+        )[0]
+        for surface in (
+            ".agents",
+            ".codebuddy",
+            ".codex",
+            ".cursor",
+            ".factory",
+            ".mastracode",
+            ".opencode",
+        ):
+            path = REPO_ROOT / surface / "skills" / "planning-with-files" / "SKILL.md"
+            text = path.read_text(encoding="utf-8")
+            hooks = text.split("hooks:\n", 1)[1].split("metadata:\n", 1)[0]
+            with self.subTest(surface=surface):
+                self.assertEqual(canonical_hooks, hooks)
 
 
 if __name__ == "__main__":

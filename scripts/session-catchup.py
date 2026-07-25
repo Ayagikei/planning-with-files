@@ -2,276 +2,482 @@
 """
 Session Catchup Script for planning-with-files
 
-Session-agnostic scanning: finds the most recent planning file update across
-ALL sessions, then collects all conversation from that point forward through
-all subsequent sessions until now.
-
-Supports multiple AI IDEs:
-- Claude Code (.claude/projects/)
-- OpenCode (.local/share/opencode/storage/)
+Analyzes the previous session to find unsynced context after the last
+planning file update. Designed to run on SessionStart.
 
 Usage: python3 session-catchup.py [project-path]
 """
 
 import json
+import re
 import sys
 import os
+import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+
+def configure_utf8_stdio() -> None:
+    """Make catchup output deterministic on Windows legacy code pages.
+
+    Codex sessions and planning files are UTF-8 and can contain arbitrary
+    Unicode. Windows PowerShell may nevertheless launch Python with a cp1252
+    (or another OEM/ANSI) stdout codec. A report containing Chinese text then
+    used to fail at the first ``print`` with ``UnicodeEncodeError``. Configure
+    both streams before any report is emitted; ``errors='replace'`` also keeps
+    this advisory hook fail-safe if a malformed surrogate reaches the output.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, 'reconfigure', None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding='utf-8', errors='replace')
+            except (OSError, ValueError):
+                # Replaced/captured streams may not permit reconfiguration.
+                # The hook remains advisory, so retain the existing stream.
+                pass
+
+
+configure_utf8_stdio()
+
+try:
+    import orjson
+except ImportError:
+    orjson = None
 
 PLANNING_FILES = ['task_plan.md', 'progress.md', 'findings.md']
+MIN_SESSION_BYTES = 5000
+PLANNING_DIR_NAMES = ('plans', 'plan', 'planning')
+SKIP_DIR_NAMES = {
+    '.git',
+    '.hg',
+    '.svn',
+    '.codex',
+    '.claude',
+    '.cursor',
+    'node_modules',
+    'dist',
+    'build',
+    'target',
+    '.next',
+}
 
 
-def detect_ide() -> str:
+def json_loads(line: str) -> Optional[Dict[str, Any]]:
+    """Prefer optional orjson while keeping the hook dependency-free."""
+    try:
+        if orjson is not None:
+            data = orjson.loads(line)
+        else:
+            data = json.loads(line)
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def normalize_for_compare(path_value: str) -> str:
+    expanded = os.path.expanduser(path_value)
+    try:
+        return str(Path(expanded).resolve())
+    except (OSError, ValueError):
+        return os.path.abspath(expanded)
+
+
+def git_root(project_path: str) -> Path:
+    cwd = Path(project_path)
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            cwd=str(cwd),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return cwd.resolve()
+    if result.returncode == 0:
+        root = result.stdout.strip()
+        if root:
+            return Path(root)
+    return cwd.resolve()
+
+
+def is_under(child: Path, parent: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def iter_docs_task_plans(repo_root: Path) -> Iterable[Path]:
+    docs_dir = repo_root / 'docs'
+    if not docs_dir.is_dir():
+        return []
+
+    matches = []
+    for path in docs_dir.rglob('task_plan.md'):
+        if any(part in SKIP_DIR_NAMES or part.startswith('.') for part in path.parts):
+            continue
+        matches.append(path.parent)
+    return matches
+
+
+def candidate_planning_dirs(project_path: str) -> List[Path]:
+    cwd = Path(project_path).resolve()
+    repo_root = git_root(project_path)
+    candidates: List[Path] = []
+    seen = set()
+
+    def add(path: Path) -> None:
+        resolved = path.resolve()
+        if resolved in seen:
+            return
+        seen.add(resolved)
+        candidates.append(resolved)
+
+    env_dir = os.getenv('PLANNING_WITH_FILES_DIR', '').strip()
+    if env_dir:
+        add(Path(os.path.expanduser(env_dir)))
+
+    current = cwd
+    while True:
+        add(current)
+        if current == repo_root or current.parent == current:
+            break
+        current = current.parent
+
+    add(repo_root)
+
+    docs_dir = repo_root / 'docs'
+    for name in PLANNING_DIR_NAMES:
+        add(docs_dir / name)
+    for candidate in iter_docs_task_plans(repo_root):
+        add(candidate)
+
+    return candidates
+
+
+def resolve_planning_dir(project_path: str) -> Optional[Path]:
+    cwd = Path(project_path).resolve()
+    repo_root = git_root(project_path)
+    best = None
+
+    for directory in candidate_planning_dirs(project_path):
+        task_plan = directory / 'task_plan.md'
+        if not task_plan.is_file():
+            continue
+
+        trio_count = sum((directory / name).is_file() for name in PLANNING_FILES)
+        latest_mtime = max(
+            (directory / name).stat().st_mtime
+            for name in PLANNING_FILES
+            if (directory / name).exists()
+        )
+        cwd_bonus = 1 if is_under(cwd, directory) else 0
+        root_penalty = 0 if directory != repo_root else -1
+        score = (trio_count, cwd_bonus, root_penalty, latest_mtime)
+        if best is None or score > best[:4]:
+            best = (*score, directory)
+
+    return None if best is None else best[4]
+
+
+def normalize_path(project_path: str) -> str:
+    """Normalize project path to match Claude Code's internal representation.
+
+    Claude Code stores session directories using the Windows-native path
+    (e.g., C:\\Users\\...) sanitized with separators replaced by dashes.
+    Git Bash passes /c/Users/... which produces a DIFFERENT sanitized
+    string. This function converts Git Bash paths to Windows paths first.
     """
-    Detect which IDE is being used based on environment and file structure.
-    Returns 'claude-code', 'opencode', or 'unknown'.
+    p = project_path
+
+    # Git Bash / MSYS2: /c/Users/... -> C:/Users/...
+    if len(p) >= 3 and p[0] == '/' and p[2] == '/':
+        p = p[1].upper() + ':' + p[2:]
+
+    # Resolve to absolute path to handle relative paths and symlinks.
+    # On non-Windows hosts, strings like C:/Users/... are not Windows paths to
+    # pathlib; resolving them would incorrectly prepend the current directory.
+    try:
+        if os.name == 'nt':
+            resolved = str(Path(p).resolve())
+        else:
+            resolved = p
+        # On Windows, resolve() returns C:\Users\... which is what we want.
+        if os.name == 'nt' or '\\' in resolved:
+            p = resolved
+    except (OSError, ValueError):
+        pass
+
+    return p
+
+
+def _claude_sanitize(path_str: str, astral_width: int = 2) -> str:
+    """Claude Code's project-dir name for a project path.
+
+    Every character outside [A-Za-z0-9_-] becomes '-', and the leading dash of
+    POSIX absolute paths is kept (real stores look like -home-user-proj). The
+    count is in UTF-16 code units rather than codepoints, so a non-BMP
+    character such as an emoji in a folder name costs TWO dashes; passing
+    astral_width=1 produces the codepoint-width spelling for older stores.
+
+    Underscores are NOT universally kept: current versions fold '_' to '-'
+    while older stores kept it, and both spellings are live on disk, so
+    get_claude_project_dir() probes both.
     """
-    # Check for OpenCode environment
-    if os.environ.get('OPENCODE_DATA_DIR'):
-        return 'opencode'
+    return re.sub(
+        r'[^A-Za-z0-9_-]',
+        lambda m: '-' * (astral_width if ord(m.group()) > 0xFFFF else 1),
+        path_str,
+    )
 
-    # Check for Claude Code directory
-    claude_dir = Path.home() / '.claude'
-    if claude_dir.exists():
-        return 'claude-code'
 
-    # Check for OpenCode directory
-    opencode_dir = Path.home() / '.local' / 'share' / 'opencode'
-    if opencode_dir.exists():
-        return 'opencode'
+def _newest_session_cwd_matches(project_dir: Path, normalized: str) -> bool:
+    """True when a recent session in project_dir records normalized as its cwd."""
+    for session in get_sessions_sorted(project_dir)[:3]:
+        try:
+            with open(session, 'r', encoding='utf-8', errors='replace') as f:
+                for _ in range(50):
+                    line = f.readline()
+                    if not line:
+                        break
+                    match = re.search(r'"cwd"\s*:\s*"((?:[^"\\]|\\.)*)"', line)
+                    if not match:
+                        continue
+                    try:
+                        cwd = json.loads('"' + match.group(1) + '"')
+                    except ValueError:
+                        cwd = match.group(1)
+                    a = cwd.replace('\\', '/').rstrip('/')
+                    b = normalized.replace('\\', '/').rstrip('/')
+                    if os.name == 'nt':
+                        a, b = a.lower(), b.lower()
+                    return a == b
+        except OSError:
+            continue
+    return False
 
-    return 'unknown'
+
+def get_claude_project_dir(project_path: str) -> Path:
+    """Resolve Claude Code's project-specific session storage path.
+
+    Claude Code keeps underscores and the leading dash of POSIX absolute
+    paths when it names ~/.claude/projects/ entries. Earlier versions of
+    this script guessed a single name with '_' replaced by '-' and the
+    leading dash stripped, which silently missed the real store on every
+    macOS/Linux install and on any project path containing an underscore.
+    The legacy spellings are still probed so stores created under them keep
+    working, and ambiguity is settled by the cwd recorded in the newest
+    session file.
+    """
+    normalized = normalize_path(project_path)
+    projects_root = Path.home() / '.claude' / 'projects'
+
+    primary = _claude_sanitize(normalized)
+    candidates = [primary]
+    for width in (2, 1):
+        exact = _claude_sanitize(normalized, width)
+        for spelling in (exact, exact.replace('_', '-')):
+            if spelling not in candidates:
+                candidates.append(spelling)
+    for cand in list(candidates):
+        stripped = cand[1:] if cand.startswith('-') else cand
+        if stripped and stripped not in candidates:
+            candidates.append(stripped)
+
+    existing = [projects_root / c for c in candidates
+                if (projects_root / c).is_dir()]
+    if not existing:
+        return projects_root / primary
+    if len(existing) == 1:
+        return existing[0]
+    for directory in existing:
+        if _newest_session_cwd_matches(directory, normalized):
+            return directory
+    return existing[0]
 
 
 def get_project_dir_claude(project_path: str) -> Path:
-    """Convert project path to Claude's storage path format.
-
-    Windows paths (C:\\Users\\... or Git Bash /c/Users/...) need the drive
-    colon and backslashes sanitized too, not just forward slashes, and
-    Claude's actual sanitized form has no leading dash for those (the drive
-    letter isn't a separator). Real Unix absolute paths keep their existing
-    leading-dash behavior unchanged (path is used as-is, matching Claude's
-    convention there).
-    """
-    p = project_path
-    if len(p) >= 3 and p[0] == '/' and p[2] == '/' and p[1].isalpha():
-        # Git Bash / MSYS2: /c/Users/... -> C:/Users/...
-        p = p[1].upper() + ':' + p[2:]
-    if ':' in p or '\\' in p:
-        try:
-            if os.name == 'nt':
-                p = str(Path(p).resolve())
-        except (OSError, ValueError):
-            pass
-        sanitized = p.replace('\\', '-').replace('/', '-').replace(':', '-')
-    else:
-        sanitized = p.replace('/', '-')
-        if not sanitized.startswith('-'):
-            sanitized = '-' + sanitized
-    sanitized = sanitized.replace('_', '-')
-    return Path.home() / '.claude' / 'projects' / sanitized
-
-
-def get_project_dir_opencode(project_path: str) -> Optional[Path]:
-    """
-    Get OpenCode session storage directory.
-    OpenCode uses: ~/.local/share/opencode/storage/session/{projectHash}/
-
-    Note: OpenCode's structure is different - this function returns the storage root.
-    Session discovery happens differently in OpenCode.
-    """
-    data_dir = os.environ.get('OPENCODE_DATA_DIR',
-                               str(Path.home() / '.local' / 'share' / 'opencode'))
-    storage_dir = Path(data_dir) / 'storage'
-
-    if not storage_dir.exists():
-        return None
-
-    return storage_dir
+    """Backward-compatible public name used by integrations and tests."""
+    return get_claude_project_dir(project_path)
 
 
 def get_sessions_sorted(project_dir: Path) -> List[Path]:
     """Get all session files sorted by modification time (newest first)."""
     sessions = list(project_dir.glob('*.jsonl'))
     main_sessions = [s for s in sessions if not s.name.startswith('agent-')]
-    return sorted(main_sessions, key=lambda p: p.stat().st_mtime, reverse=True)
+    return sorted(main_sessions, key=safe_stat_mtime, reverse=True)
 
 
-def get_sessions_sorted_opencode(storage_dir: Path) -> List[Path]:
-    """
-    Get all OpenCode session files sorted by modification time.
-    OpenCode stores sessions at: storage/session/{projectHash}/{sessionID}.json
-    """
-    session_dir = storage_dir / 'session'
-    if not session_dir.exists():
-        return []
-
-    sessions = []
-    for project_hash_dir in session_dir.iterdir():
-        if project_hash_dir.is_dir():
-            for session_file in project_hash_dir.glob('*.json'):
-                sessions.append(session_file)
-
-    return sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
-
-
-def get_session_first_timestamp(session_file: Path) -> Optional[str]:
-    """Get the timestamp of the first message in a session."""
+def claude_session_cwd(session_file: Path) -> Optional[str]:
+    """The cwd a Claude Code transcript records, or None if it records none."""
     try:
         with open(session_file, 'r', encoding='utf-8', errors='replace') as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    ts = data.get('timestamp')
-                    if ts:
-                        return ts
-                except:
-                    continue
-    except:
-        pass
+            for _ in range(50):
+                line = f.readline()
+                if not line:
+                    break
+                data = json_loads(line)
+                if data:
+                    cwd = data.get('cwd')
+                    if isinstance(cwd, str) and cwd:
+                        return cwd
+    except OSError:
+        return None
     return None
 
 
-def scan_for_planning_update(session_file: Path) -> Tuple[int, Optional[str]]:
-    """
-    Quickly scan a session file for planning file updates.
-    Returns (line_number, filename) of last update, or (-1, None) if none found.
-    """
-    last_update_line = -1
-    last_update_file = None
+def same_project_path(left: str, right: str) -> bool:
+    """Compare two absolute paths the way the host filesystem would."""
+    a, b = normalize_for_compare(left), normalize_for_compare(right)
+    if os.name == 'nt':
+        a, b = a.lower(), b.lower()
+    return a == b
 
+
+def filter_sessions_by_cwd(sessions: List[Path], project_path: str) -> Tuple[List[Path], Optional[str]]:
+    """Drop transcripts that positively belong to a different project.
+
+    Claude Code folds project paths into a single directory name, so two
+    projects whose paths differ only in folded characters (client.acme and
+    client-acme both fold to client-acme) share one store. Without this
+    filter a catchup in one of them prints the other's conversation into the
+    fresh context.
+
+    Fail open: transcripts that record no cwd are kept, because that field is
+    not present in every generation of the format, and a store whose sessions
+    all record another project is reported rather than silently used.
+    Returns (sessions_to_use, notice).
+    """
+    project_cmp = normalize_path(project_path)
+    mine: List[Path] = []
+    unknown: List[Path] = []
+    foreign: List[str] = []
+    for session in sessions:
+        cwd = claude_session_cwd(session)
+        if cwd is None:
+            unknown.append(session)
+        elif same_project_path(cwd, project_cmp):
+            mine.append(session)
+        else:
+            foreign.append(cwd)
+
+    if mine:
+        keep = [s for s in sessions if s in mine or s in unknown]
+        return keep, None
+    if foreign:
+        return [], (
+            "[planning-with-files] Session catchup skipped: "
+            f"{Path(sorted(set(foreign))[0]).name} and this project share one "
+            "~/.claude/projects directory, so no transcript here belongs to "
+            f"{project_cmp}."
+        )
+    return unknown, None
+
+
+def safe_stat_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def is_substantial_session(session: Path) -> bool:
+    try:
+        return session.stat().st_size > MIN_SESSION_BYTES
+    except OSError:
+        return False
+
+
+def read_codex_meta(session_file: Path) -> Optional[Dict[str, Any]]:
+    """Read the first session_meta; later meta records may be copied parent context."""
     try:
         with open(session_file, 'r', encoding='utf-8', errors='replace') as f:
-            for line_num, line in enumerate(f):
-                if '"Write"' not in line and '"Edit"' not in line:
+            for line in f:
+                data = json_loads(line)
+                if not data or data.get('type') != 'session_meta':
                     continue
-
-                try:
-                    data = json.loads(line)
-                    if data.get('type') != 'assistant':
-                        continue
-
-                    content = data.get('message', {}).get('content', [])
-                    if not isinstance(content, list):
-                        continue
-
-                    for item in content:
-                        if item.get('type') != 'tool_use':
-                            continue
-                        tool_name = item.get('name', '')
-                        if tool_name not in ('Write', 'Edit'):
-                            continue
-
-                        file_path = item.get('input', {}).get('file_path', '')
-                        for pf in PLANNING_FILES:
-                            if file_path.endswith(pf):
-                                last_update_line = line_num
-                                last_update_file = pf
-                                break
-                except json.JSONDecodeError:
-                    continue
-    except Exception:
-        pass
-
-    return last_update_line, last_update_file
+                payload = data.get('payload')
+                return payload if isinstance(payload, dict) else None
+    except OSError:
+        return None
+    return None
 
 
-def extract_messages_from_session(session_file: Path, after_line: int = -1) -> List[Dict]:
-    """
-    Extract conversation messages from a session file.
-    If after_line >= 0, only extract messages after that line.
-    If after_line < 0, extract all messages.
-    """
-    result = []
-
-    try:
-        with open(session_file, 'r', encoding='utf-8', errors='replace') as f:
-            for line_num, line in enumerate(f):
-                if after_line >= 0 and line_num <= after_line:
-                    continue
-
-                try:
-                    msg = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                msg_type = msg.get('type')
-                is_meta = msg.get('isMeta', False)
-
-                if msg_type == 'user' and not is_meta:
-                    content = msg.get('message', {}).get('content', '')
-                    if isinstance(content, list):
-                        for item in content:
-                            if isinstance(item, dict) and item.get('type') == 'text':
-                                content = item.get('text', '')
-                                break
-                        else:
-                            content = ''
-
-                    if content and isinstance(content, str):
-                        # Skip system/command messages
-                        if content.startswith(('<local-command', '<command-', '<task-notification')):
-                            continue
-                        if len(content) > 20:
-                            result.append({
-                                'role': 'user',
-                                'content': content,
-                                'line': line_num,
-                                'session': session_file.stem[:8]
-                            })
-
-                elif msg_type == 'assistant':
-                    msg_content = msg.get('message', {}).get('content', '')
-                    text_content = ''
-                    tool_uses = []
-
-                    if isinstance(msg_content, str):
-                        text_content = msg_content
-                    elif isinstance(msg_content, list):
-                        for item in msg_content:
-                            if item.get('type') == 'text':
-                                text_content = item.get('text', '')
-                            elif item.get('type') == 'tool_use':
-                                tool_name = item.get('name', '')
-                                tool_input = item.get('input', {})
-                                if tool_name == 'Edit':
-                                    tool_uses.append(f"Edit: {tool_input.get('file_path', 'unknown')}")
-                                elif tool_name == 'Write':
-                                    tool_uses.append(f"Write: {tool_input.get('file_path', 'unknown')}")
-                                elif tool_name == 'Bash':
-                                    cmd = tool_input.get('command', '')[:80]
-                                    tool_uses.append(f"Bash: {cmd}")
-                                elif tool_name == 'AskUserQuestion':
-                                    tool_uses.append("AskUserQuestion")
-                                else:
-                                    tool_uses.append(f"{tool_name}")
-
-                    if text_content or tool_uses:
-                        result.append({
-                            'role': 'assistant',
-                            'content': text_content[:600] if text_content else '',
-                            'tools': tool_uses,
-                            'line': line_num,
-                            'session': session_file.stem[:8]
-                        })
-    except Exception:
-        pass
-
-    return result
+def codex_meta_cwd(meta: Dict[str, Any]) -> Optional[str]:
+    cwd = meta.get('cwd')
+    return cwd if isinstance(cwd, str) else None
 
 
-PLANNING_LIKE = ('%task_plan.md', '%findings.md', '%progress.md')
+def find_current_codex_session(sessions: List[Path]) -> Optional[Path]:
+    thread_id = os.getenv('CODEX_THREAD_ID', '').strip()
+    if not thread_id:
+        return None
+
+    for session in sessions:
+        if thread_id in session.name:
+            return session
+    return None
+
+
+def is_codex_project_session(session: Path, project_cmp: str) -> bool:
+    if not is_substantial_session(session):
+        return False
+
+    meta = read_codex_meta(session)
+    if not meta:
+        return False
+    source = meta.get('source')
+    if isinstance(source, dict) and 'subagent' in source:
+        return False
+    cwd = codex_meta_cwd(meta)
+    return bool(cwd and normalize_for_compare(cwd) == project_cmp)
+
+
+def get_codex_sessions(project_path: str) -> Iterable[Path]:
+    sessions_dir = Path(os.path.expanduser(os.getenv('CODEX_SESSIONS_DIR', '~/.codex/sessions')))
+    if not sessions_dir.exists():
+        return
+
+    project_cmp = normalize_for_compare(project_path)
+    sessions = sorted(sessions_dir.rglob('rollout-*.jsonl'), key=safe_stat_mtime, reverse=True)
+    current = find_current_codex_session(sessions)
+    if current and is_codex_project_session(current, project_cmp):
+        yield current
+
+    for session in sessions:
+        if session == current:
+            continue
+        if is_codex_project_session(session, project_cmp):
+            yield session
+
+
+def get_session_candidates(project_path: str) -> Tuple[str, Iterable[Path]]:
+    script_path = Path(__file__).resolve().as_posix().lower()
+    if '/.codex/' in script_path:
+        return 'codex', get_codex_sessions(project_path)
+    if '/.opencode/' in script_path:
+        # OpenCode dispatch is handled separately via SQLite (v2.38.0+).
+        return 'opencode', []
+
+    claude_project_dir = get_claude_project_dir(project_path)
+    if claude_project_dir.exists():
+        sessions, notice = filter_sessions_by_cwd(
+            get_sessions_sorted(claude_project_dir), project_path
+        )
+        if notice:
+            print(notice)
+        return 'claude', sessions
+    return 'claude', []
+
+
+PLANNING_LIKE_SQL = ('%task_plan.md', '%findings.md', '%progress.md')
 
 
 def get_opencode_db_path() -> Optional[Path]:
-    """Resolve OpenCode SQLite path.
-
-    xdg-basedir resolution is the same on every OS (Linux, macOS, Windows):
-    ${XDG_DATA_HOME ?? ~/.local/share}/opencode/opencode.db. The legacy
-    OPENCODE_DATA_DIR env var is honored as a fallback for users who set
-    it under the pre-SQLite scheme.
-    """
+    """Resolve OpenCode SQLite path. Same on all OS per xdg-basedir."""
     xdg = os.environ.get('XDG_DATA_HOME')
     if xdg:
         base = Path(xdg) / 'opencode'
@@ -283,23 +489,71 @@ def get_opencode_db_path() -> Optional[Path]:
     return db if db.exists() else None
 
 
-def _format_opencode_part(data: Dict, session_id: str) -> Optional[Dict]:
-    """Convert one OpenCode part row's JSON `data` blob into a print-ready summary."""
+# Result excerpts are read from at most RESULT_READ_CAP chars and the emitted
+# line keeps at most RESULT_EXCERPT_CAP chars, so annotated tool lines stay
+# inside the existing injection bounds.
+RESULT_READ_CAP = 200
+RESULT_EXCERPT_CAP = 80
+
+
+def result_excerpt(content: Any) -> str:
+    """First non-empty line of a tool result, hard-capped."""
+    text = content if isinstance(content, str) else text_content(content)
+    for line in text[:RESULT_READ_CAP].splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped[:RESULT_EXCERPT_CAP]
+    return ''
+
+
+def result_annotation(is_error: bool, content: Any) -> str:
+    """Outcome suffix for a tool report line: ' -> ok' on success,
+    ' -> FAILED (first error line)' on failure."""
+    if not is_error:
+        return ' -> ok'
+    excerpt = result_excerpt(content)
+    return f" -> FAILED ({excerpt})" if excerpt else ' -> FAILED'
+
+
+def _opencode_state_annotation(state: Any) -> str:
+    """Outcome annotation for one OpenCode tool part.
+
+    Newer OpenCode schemas carry a terminal status plus output/error text on
+    part.state. Rows without a terminal status (older schemas, pending or
+    running states) must render exactly as before, so this returns '' then.
+    """
+    if not isinstance(state, dict):
+        return ''
+    status = state.get('status')
+    if status == 'error':
+        source = state.get('error')
+        if not isinstance(source, str) or not source.strip():
+            source = state.get('output')
+        return result_annotation(True, source if isinstance(source, str) else '')
+    if status == 'completed':
+        return ' -> ok'
+    return ''
+
+
+def _format_opencode_part(data: Dict[str, Any], session_id: str) -> Optional[Dict[str, Any]]:
+    """Print-ready summary for one OpenCode part row."""
     ptype = data.get('type')
     short = session_id[:8] if session_id else '????????'
     if ptype == 'tool':
         tool = (data.get('tool') or '').lower()
         state = data.get('state') or {}
-        input_ = state.get('input') or {}
+        input_ = state.get('input') if isinstance(state, dict) else None
+        input_ = input_ or {}
+        outcome = _opencode_state_annotation(state)
         if tool in ('write', 'edit'):
             fp = input_.get('filePath', '')
-            return {'session': short, 'summary': f"Tool {tool}: {fp}"}
+            return {'session': short, 'summary': f"Tool {tool}: {fp}{outcome}"}
         if tool == 'patch':
-            return {'session': short, 'summary': f"Tool patch: {input_.get('filePath', '')}"}
+            return {'session': short, 'summary': f"Tool patch: {input_.get('filePath', '')}{outcome}"}
         if tool == 'bash':
             cmd = (input_.get('command') or '')[:80]
-            return {'session': short, 'summary': f"Tool bash: {cmd}"}
-        return {'session': short, 'summary': f"Tool {tool}"}
+            return {'session': short, 'summary': f"Tool bash: {cmd}{outcome}"}
+        return {'session': short, 'summary': f"Tool {tool}{outcome}"}
     if ptype == 'text':
         text = (data.get('text') or '')[:300]
         if text.strip():
@@ -308,14 +562,11 @@ def _format_opencode_part(data: Dict, session_id: str) -> Optional[Dict]:
 
 
 def opencode_catchup(project_path: str) -> None:
-    """Session catchup for OpenCode (SQLite at ~/.local/share/opencode/opencode.db).
+    """Session catchup for OpenCode SQLite (v2.38.0+).
 
-    Schema reference (sst/opencode dev @ 2026-05-14):
+    Schema as of sst/opencode dev @ 2026-05-14:
       session (id, directory, time_created, ...)
       part    (id, session_id, message_id, time_created, data TEXT JSON)
-
-    Tool calls are stored as part rows where data.type='tool',
-    data.tool='write'|'edit'|'patch', data.state.input.filePath=<abs path>.
     """
     import sqlite3
 
@@ -325,12 +576,10 @@ def opencode_catchup(project_path: str) -> None:
 
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    except sqlite3.OperationalError as exc:
-        print(f"\n[planning-with-files] Could not open OpenCode DB read-only: {exc}")
+    except sqlite3.OperationalError:
         return
 
     cur = conn.cursor()
-
     try:
         cur.execute("PRAGMA table_info(session)")
         session_cols = {row[1] for row in cur.fetchall()}
@@ -344,7 +593,7 @@ def opencode_catchup(project_path: str) -> None:
         conn.close()
         return
 
-    project_abs = str(Path(project_path).resolve())
+    project_abs = normalize_for_compare(project_path)
 
     cur.execute(
         "SELECT id, time_created FROM session WHERE directory = ? ORDER BY time_created DESC",
@@ -361,7 +610,7 @@ def opencode_catchup(project_path: str) -> None:
     update_time = None
     update_idx = -1
     for idx, (sid, _) in enumerate(previous_sessions):
-        params = (sid,) + PLANNING_LIKE
+        params = (sid,) + PLANNING_LIKE_SQL
         cur.execute(
             """
             SELECT time_created FROM part
@@ -391,7 +640,7 @@ def opencode_catchup(project_path: str) -> None:
 
     newer_sessions = list(reversed(previous_sessions[:update_idx]))
 
-    all_messages: List[Dict] = []
+    parts: List[Dict[str, Any]] = []
 
     cur.execute(
         "SELECT data FROM part WHERE session_id = ? AND time_created > ? ORDER BY time_created ASC, id ASC",
@@ -404,7 +653,7 @@ def opencode_catchup(project_path: str) -> None:
             continue
         msg = _format_opencode_part(data, update_sid)
         if msg:
-            all_messages.append(msg)
+            parts.append(msg)
 
     for sid, _ in newer_sessions:
         cur.execute(
@@ -418,26 +667,26 @@ def opencode_catchup(project_path: str) -> None:
                 continue
             msg = _format_opencode_part(data, sid)
             if msg:
-                all_messages.append(msg)
+                parts.append(msg)
 
     conn.close()
 
-    if not all_messages:
+    if not parts:
         return
 
     print(f"\n[planning-with-files] SESSION CATCHUP DETECTED (IDE: opencode)")
     print(f"Last planning update in session {update_sid[:8]}...")
     if update_idx + 1 > 1:
         print(f"Scanning {update_idx + 1} previous sessions for unsynced context")
-    print(f"Unsynced parts: {len(all_messages)}")
+    print(f"Unsynced parts: {len(parts)}")
     print("\n--- UNSYNCED CONTEXT ---")
 
     MAX_PARTS = 100
-    if len(all_messages) > MAX_PARTS:
-        print(f"(Showing last {MAX_PARTS} of {len(all_messages)} parts)\n")
-        to_show = all_messages[-MAX_PARTS:]
+    if len(parts) > MAX_PARTS:
+        print(f"(Showing last {MAX_PARTS} of {len(parts)} parts)\n")
+        to_show = parts[-MAX_PARTS:]
     else:
-        to_show = all_messages
+        to_show = parts
 
     current_session = None
     for msg in to_show:
@@ -453,105 +702,293 @@ def opencode_catchup(project_path: str) -> None:
     print("4. Continue with task")
 
 
+def parse_session_messages(session_file: Path) -> List[Dict[str, Any]]:
+    """Parse all messages from a session file, preserving order."""
+    messages = []
+    with open(session_file, 'r', encoding='utf-8', errors='replace') as f:
+        for line_num, line in enumerate(f):
+            data = json_loads(line)
+            if data is not None:
+                data['_line_num'] = line_num
+                messages.append(data)
+    return messages
+
+
+def planning_file_from_path(path_value: Any) -> Optional[str]:
+    if not isinstance(path_value, str):
+        return None
+    for pf in PLANNING_FILES:
+        if path_value.endswith(pf):
+            return pf
+    return None
+
+
+def planning_file_from_paths(paths: Iterable[Any]) -> Optional[str]:
+    matches = {pf for path in paths if (pf := planning_file_from_path(path))}
+    for pf in PLANNING_FILES:
+        if pf in matches:
+            return pf
+    return None
+
+
+def codex_planning_update(payload: Dict[str, Any]) -> Optional[str]:
+    """Use Codex's structured apply_patch result instead of parsing tool text."""
+    if payload.get('type') != 'patch_apply_end' or payload.get('success') is not True:
+        return None
+    changes = payload.get('changes')
+    return planning_file_from_paths(changes.keys()) if isinstance(changes, dict) else None
+
+
+def find_last_planning_update(messages: List[Dict[str, Any]]) -> Tuple[int, Optional[str]]:
+    """
+    Find the last time a planning file was written/edited.
+    Returns (line_number, filename) or (-1, None) if not found.
+    """
+    last_update_line = -1
+    last_update_file = None
+
+    for msg in messages:
+        line_num = msg.get('_line_num')
+        if not isinstance(line_num, int):
+            continue
+        msg_type = msg.get('type')
+
+        if msg_type == 'assistant':
+            content = msg.get('message', {}).get('content', [])
+            if isinstance(content, list):
+                for item in content:
+                    if item.get('type') == 'tool_use':
+                        tool_name = item.get('name', '')
+                        tool_input = item.get('input', {})
+                        if not isinstance(tool_input, dict):
+                            tool_input = {}
+
+                        if tool_name in ('Write', 'Edit'):
+                            planning_file = planning_file_from_path(tool_input.get('file_path', ''))
+                            if planning_file:
+                                last_update_line = line_num
+                                last_update_file = planning_file
+
+        elif msg_type == 'event_msg':
+            payload = msg.get('payload')
+            if isinstance(payload, dict):
+                planning_file = codex_planning_update(payload)
+                if planning_file:
+                    last_update_line = line_num
+                    last_update_file = planning_file
+
+    return last_update_line, last_update_file
+
+
+def text_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ''
+    return '\n'.join(
+        item.get('text', '')
+        for item in content
+        if isinstance(item, dict) and isinstance(item.get('text'), str)
+    )
+
+
+def parse_codex_tool_args(payload: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+    raw_args = payload.get('arguments', payload.get('input', ''))
+    if isinstance(raw_args, dict):
+        return raw_args, json.dumps(raw_args, ensure_ascii=True)
+    if not isinstance(raw_args, str):
+        return {}, ''
+    decoded = json_loads(raw_args)
+    return (decoded, raw_args) if isinstance(decoded, dict) else ({}, raw_args)
+
+
+def summarize_codex_tool(payload: Dict[str, Any]) -> str:
+    tool_name = payload.get('name', 'tool')
+    tool_args, raw_args = parse_codex_tool_args(payload)
+    if tool_name == 'exec_command':
+        command = tool_args.get('cmd', raw_args)
+        if isinstance(command, str):
+            return f"exec_command: {command[:80]}"
+    return str(tool_name)
+
+
+def collect_claude_tool_results(messages: List[Dict[str, Any]]) -> Dict[str, str]:
+    """Map tool_use id -> outcome annotation from user-side tool_result entries.
+
+    Claude Code records tool results as user messages whose content list holds
+    tool_result items. Sessions without such entries yield an empty map, which
+    keeps legacy transcripts byte-identical in the report.
+    """
+    results: Dict[str, str] = {}
+    for msg in messages:
+        if msg.get('type') != 'user':
+            continue
+        message = msg.get('message')
+        if not isinstance(message, dict):
+            continue
+        content = message.get('content')
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if not isinstance(item, dict) or item.get('type') != 'tool_result':
+                continue
+            use_id = item.get('tool_use_id')
+            if not isinstance(use_id, str) or not use_id:
+                continue
+            results[use_id] = result_annotation(
+                item.get('is_error') is True, item.get('content'))
+    return results
+
+
+def extract_messages_after(messages: List[Dict[str, Any]], after_line: int) -> List[Dict[str, Any]]:
+    """Extract conversation messages after a certain line number."""
+    tool_results = collect_claude_tool_results(messages)
+    result = []
+    for msg in messages:
+        line_num = msg.get('_line_num')
+        if not isinstance(line_num, int) or line_num <= after_line:
+            continue
+
+        msg_type = msg.get('type')
+        is_meta = msg.get('isMeta', False)
+
+        if msg_type == 'user' and not is_meta:
+            content = text_content(msg.get('message', {}).get('content', ''))
+
+            if content:
+                if content.startswith(('<local-command', '<command-', '<task-notification')):
+                    continue
+                if len(content) > 20:
+                    result.append({'role': 'user', 'content': content, 'line': line_num})
+
+        elif msg_type == 'assistant':
+            msg_content = msg.get('message', {}).get('content', '')
+            text = text_content(msg_content)
+            tool_uses = []
+
+            if isinstance(msg_content, list):
+                for item in msg_content:
+                    if isinstance(item, dict) and item.get('type') == 'tool_use':
+                        tool_name = item.get('name', '')
+                        tool_input = item.get('input', {})
+                        if not isinstance(tool_input, dict):
+                            tool_input = {}
+                        use_id = item.get('id')
+                        # Empty when no tool_result matched: legacy transcripts
+                        # keep byte-identical lines.
+                        outcome = (tool_results.get(use_id, '')
+                                   if isinstance(use_id, str) else '')
+                        if tool_name == 'Edit':
+                            tool_uses.append(f"Edit: {tool_input.get('file_path', 'unknown')}{outcome}")
+                        elif tool_name == 'Write':
+                            tool_uses.append(f"Write: {tool_input.get('file_path', 'unknown')}{outcome}")
+                        elif tool_name == 'Bash':
+                            cmd = tool_input.get('command', '')[:80]
+                            tool_uses.append(f"Bash: {cmd}{outcome}")
+                        else:
+                            tool_uses.append(f"{tool_name}{outcome}")
+
+            if text or tool_uses:
+                result.append({
+                    'role': 'assistant',
+                    'content': text[:600] if text else '',
+                    'tools': tool_uses,
+                    'line': line_num
+                })
+
+        elif msg_type == 'response_item':
+            payload = msg.get('payload')
+            if not isinstance(payload, dict):
+                continue
+
+            payload_type = payload.get('type')
+            if payload_type == 'message':
+                role = payload.get('role')
+                if role not in ('user', 'assistant'):
+                    continue
+                content = text_content(payload.get('content'))
+                if role == 'user':
+                    if content.startswith(('<local-command', '<command-', '<task-notification')):
+                        continue
+                    if len(content) > 20:
+                        result.append({'role': 'user', 'content': content, 'line': line_num})
+                elif content:
+                    result.append({
+                        'role': 'assistant',
+                        'content': content[:600],
+                        'tools': [],
+                        'line': line_num
+                    })
+            elif payload_type in ('function_call', 'custom_tool_call'):
+                result.append({
+                    'role': 'assistant',
+                    'content': '',
+                    'tools': [summarize_codex_tool(payload)],
+                    'line': line_num
+                })
+
+    return result
+
+
 def main():
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
+    planning_dir = resolve_planning_dir(project_path) or Path(project_path).resolve()
 
-    ide = detect_ide()
+    runtime_name, sessions = get_session_candidates(project_path)
 
-    if ide == 'opencode':
+    if runtime_name == 'opencode':
         opencode_catchup(project_path)
         return
 
-    # Claude Code path
-    project_dir = get_project_dir_claude(project_path)
-
-    if not project_dir.exists():
+    session_list = list(sessions)
+    if not session_list:
         return
 
-    sessions = get_sessions_sorted(project_dir)
-    if len(sessions) < 2:
-        return
+    # With multiple transcripts the newest is the current session. A single
+    # candidate can still be a recoverable compacted/current transcript (Codex
+    # and test harnesses expose this shape), so scan it rather than going dark.
+    target_session = None
+    last_update_file = None
+    messages_after = []
+    previous_sessions = session_list[1:] if len(session_list) > 1 else session_list
+    for index, session in enumerate(previous_sessions):
+        messages = parse_session_messages(session)
+        last_update_line, candidate_file = find_last_planning_update(messages)
+        if last_update_line < 0:
+            continue
+        target_session = session
+        last_update_file = candidate_file
+        messages_after.extend(extract_messages_after(messages, last_update_line))
+        for newer in reversed(previous_sessions[:index]):
+            messages_after.extend(parse_session_messages(newer))
+        break
 
-    # Skip the current session (most recently modified = index 0)
-    previous_sessions = sessions[1:]
-
-    # Find the most recent planning file update across ALL previous sessions
-    # Sessions are sorted newest first, so we scan in order
-    update_session = None
-    update_line = -1
-    update_file = None
-    update_session_idx = -1
-
-    for idx, session in enumerate(previous_sessions):
-        line, filename = scan_for_planning_update(session)
-        if line >= 0:
-            update_session = session
-            update_line = line
-            update_file = filename
-            update_session_idx = idx
-            break
-
-    if not update_session:
-        # No planning file updates found in any previous session
-        return
-
-    # Collect ALL messages from the update point forward, across all sessions
-    all_messages = []
-
-    # 1. Get messages from the session with the update (after the update line)
-    messages_from_update_session = extract_messages_from_session(update_session, after_line=update_line)
-    all_messages.extend(messages_from_update_session)
-
-    # 2. Get ALL messages from sessions between update_session and current
-    # These are sessions[1:update_session_idx] (newer than update_session)
-    intermediate_sessions = previous_sessions[:update_session_idx]
-
-    # Process from oldest to newest for correct chronological order
-    for session in reversed(intermediate_sessions):
-        messages = extract_messages_from_session(session, after_line=-1)  # Get all messages
-        all_messages.extend(messages)
-
-    if not all_messages:
+    if not target_session or not messages_after:
         return
 
     # Output catchup report
-    print(f"\n[planning-with-files] SESSION CATCHUP DETECTED (IDE: {ide})")
-    print(f"Last planning update: {update_file} in session {update_session.stem[:8]}...")
+    print("\n[planning-with-files] SESSION CATCHUP DETECTED")
+    print(f"Previous session: {target_session.stem}")
+    print(f"Runtime: {runtime_name}")
+    print(f"Planning dir: {planning_dir}")
 
-    sessions_covered = update_session_idx + 1
-    if sessions_covered > 1:
-        print(f"Scanning {sessions_covered} sessions for unsynced context")
-
-    print(f"Unsynced messages: {len(all_messages)}")
+    print(f"Last planning update: {last_update_file} at message #{last_update_line}")
+    print(f"Unsynced messages: {len(messages_after)}")
 
     print("\n--- UNSYNCED CONTEXT ---")
-
-    # Show up to 100 messages
-    MAX_MESSAGES = 100
-    if len(all_messages) > MAX_MESSAGES:
-        print(f"(Showing last {MAX_MESSAGES} of {len(all_messages)} messages)\n")
-        messages_to_show = all_messages[-MAX_MESSAGES:]
-    else:
-        messages_to_show = all_messages
-
-    current_session = None
-    for msg in messages_to_show:
-        # Show session marker when it changes
-        if msg.get('session') != current_session:
-            current_session = msg.get('session')
-            print(f"\n[Session: {current_session}...]")
-
+    assistant_label = 'CODEX' if runtime_name == 'codex' else 'CLAUDE'
+    for msg in messages_after[-15:]:  # Last 15 messages
         if msg['role'] == 'user':
             print(f"USER: {msg['content'][:300]}")
         else:
             if msg.get('content'):
-                print(f"CLAUDE: {msg['content'][:300]}")
+                print(f"{assistant_label}: {msg['content'][:300]}")
             if msg.get('tools'):
                 print(f"  Tools: {', '.join(msg['tools'][:4])}")
 
     print("\n--- RECOMMENDED ---")
     print("1. Run: git diff --stat")
-    print("2. Read: task_plan.md, progress.md, findings.md")
+    print(f"2. Read: {planning_dir / 'task_plan.md'}, {planning_dir / 'progress.md'}, {planning_dir / 'findings.md'}")
     print("3. Update planning files based on above context")
     print("4. Continue with task")
 

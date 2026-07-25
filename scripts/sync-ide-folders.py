@@ -12,7 +12,7 @@ What it syncs:
   - Scripts     (check-complete.sh/.ps1, init-session.sh/.ps1, session-catchup.py)
 
 What it NEVER touches:
-  - SKILL.md           (IDE-specific frontmatter differs per IDE)
+  - SKILL.md body      (IDE-specific frontmatter/body differs per IDE)
   - IDE-specific files  (hooks, prompts, package.json, steering files)
 
 Use --dry-run to preview changes without writing anything.
@@ -47,6 +47,14 @@ SCRIPTS = [
     "scripts/check-complete.ps1",
     "scripts/init-session.sh",
     "scripts/init-session.ps1",
+    "scripts/gate-stop.sh",
+    "scripts/inject-plan.sh",
+    "scripts/ledger-append.sh",
+    "scripts/ledger-append.ps1",
+    "scripts/ledger-summary.sh",
+    "scripts/ledger-summary.ps1",
+    "scripts/phase-status.sh",
+    "scripts/phase-status.ps1",
     "scripts/session-catchup.py",
     "scripts/resolve-plan-dir.sh",
     "scripts/resolve-plan-dir.ps1",
@@ -54,6 +62,23 @@ SCRIPTS = [
     "scripts/set-active-plan.ps1",
     "scripts/attest-plan.sh",
     "scripts/attest-plan.ps1",
+    "scripts/plan-doctor.sh",
+]
+
+# .agents/ ships the FULL canonical surface (no IDE adapter layer exists to
+# carry the rest): hook dispatchers, ledger tooling, and every template.
+AGENTS_EXTRA_SCRIPTS = [
+    "scripts/gate-stop.sh",
+    "scripts/inject-plan.sh",
+    "scripts/ledger-append.sh",
+    "scripts/ledger-append.ps1",
+    "scripts/ledger-summary.sh",
+    "scripts/ledger-summary.ps1",
+    "scripts/phase-status.sh",
+    "scripts/phase-status.ps1",
+]
+AGENTS_EXTRA_TEMPLATES = [
+    "templates/task_plan_autonomous.md",
 ]
 
 # ─── IDE sync manifests ───────────────────────────────────────────
@@ -110,8 +135,7 @@ IDE_MANIFESTS = {
     ".cursor": _build_manifest(
         ".cursor/skills/planning-with-files",
         ref_style="flat",
-        include_scripts=False,
-        # Cursor hooks are IDE-specific, not synced
+        include_scripts=True,
     ),
 
     ".gemini": _build_manifest(
@@ -159,12 +183,49 @@ IDE_MANIFESTS = {
     ".opencode": _build_manifest(
         ".opencode/skills/planning-with-files",
         ref_style="flat",
-        include_scripts=False,
+        include_scripts=True,
+    ),
+
+    ".mastracode": _build_manifest(
+        ".mastracode/skills/planning-with-files",
+        ref_style="subdir",
+        include_scripts=True,
     ),
 
     # Kiro: maintained under .kiro/ (skill + wrappers); not synced from canonical scripts/.
     ".kiro": {},
 }
+
+
+def _build_agents_manifest():
+    """Manifest for .agents/skills/ — the cross-tool Agent Skills standard.
+
+    Shipped in-repo so a plain git clone is natively discoverable by every
+    tool that reads .agents/skills/ (Zed, Amp, Warp, Devin, Antigravity,
+    Gemini CLI, Cursor). SKILL.md itself is version-bumped by bump-version.py
+    and deliberately not synced here, matching every other IDE folder.
+    """
+    base = ".agents/skills/planning-with-files"
+    manifest = _build_manifest(base, ref_style="flat", include_scripts=True)
+    b = Path(base)
+    for s in AGENTS_EXTRA_SCRIPTS:
+        manifest[s] = str(b / s)
+    for t in AGENTS_EXTRA_TEMPLATES:
+        manifest[t] = str(b / "templates" / Path(t).name)
+    return manifest
+
+
+IDE_MANIFESTS[".agents"] = _build_agents_manifest()
+
+HOOK_SURFACES = (
+    ".agents",
+    ".codebuddy",
+    ".codex",
+    ".cursor",
+    ".factory",
+    ".mastracode",
+    ".opencode",
+)
 
 
 # ─── Utility functions ─────────────────────────────────────────────
@@ -198,6 +259,26 @@ def sync_file(src, dst, *, dry_run=False):
         shutil.copy2(src, dst)
 
     return action, f"{'Would ' if dry_run else ''}{action}: {dst}"
+
+
+def hook_block(text):
+    """Return the shared hooks block, excluding the metadata marker."""
+    return text.split("hooks:\n", 1)[1].split("metadata:\n", 1)[0]
+
+
+def sync_hook_block(dst, canonical_hooks, *, dry_run=False):
+    """Sync only SKILL.md hooks while preserving surface-specific metadata."""
+    text = dst.read_text(encoding="utf-8")
+    current = hook_block(text)
+    if current == canonical_hooks:
+        return "skipped"
+    if not dry_run:
+        dst.write_text(
+            text.replace(f"hooks:\n{current}metadata:\n",
+                         f"hooks:\n{canonical_hooks}metadata:\n", 1),
+            encoding="utf-8",
+        )
+    return "updated"
 
 
 # ─── Main ──────────────────────────────────────────────────────────
@@ -238,6 +319,7 @@ def main(argv=None):
           f"Syncing from {CANONICAL}/\n")
 
     stats = {"updated": 0, "created": 0, "skipped": 0, "missing_src": 0, "drift": 0}
+    canonical_hooks = hook_block((CANONICAL / "SKILL.md").read_text(encoding="utf-8"))
 
     for ide_name, manifest in sorted(IDE_MANIFESTS.items()):
         # Skip IDEs whose base directory doesn't exist
@@ -247,6 +329,22 @@ def main(argv=None):
 
         print(f"  {ide_name}/")
         ide_changes = 0
+
+        if ide_name in HOOK_SURFACES:
+            skill_md = ide_root / "skills" / "planning-with-files" / "SKILL.md"
+            hooks_action = sync_hook_block(
+                skill_md, canonical_hooks, dry_run=(dry_run or verify)
+            )
+            if hooks_action == "updated":
+                if verify:
+                    print(f"    DRIFT: {skill_md} hooks")
+                    stats["drift"] += 1
+                else:
+                    print(f"    UPDATED: {skill_md} hooks")
+                    stats["updated"] += 1
+                ide_changes += 1
+            else:
+                stats["skipped"] += 1
 
         for canonical_key, target_path in sorted(manifest.items()):
             # Handle __extra_ keys (canonical key contains __extra_ suffix)

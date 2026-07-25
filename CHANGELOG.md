@@ -2,6 +2,219 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.2] - 2026-07-24
+
+### Fixed
+- **Session recovery silently found nothing for any project path containing a dot, a space, or any other non-alphanumeric character (closes #209, reported by @seathatflowsinourveins).** Claude Code names `~/.claude/projects/` entries by folding every character outside `[A-Za-z0-9-]` to `-`, but three copies of `session-catchup.py` still used a manual replace chain that handled only `/`, `\` and `:`. Those copies computed a directory name Claude Code never writes, no candidate matched, and `main()` returned at the `exists()` check with exit 0, so catchup after `/clear` produced nothing and reported nothing. Hidden directories such as `~/.dotfiles` were the common case. One of the three sits on a live install route: `marketplace.json` declares `"source": "./"`, so the plugin root is the repository root and the SKILL.md restore block resolves `${CLAUDE_PLUGIN_ROOT}/scripts/session-catchup.py` for every plugin user on Linux, macOS or Git Bash. Measured against a real store holding 89 sessions, the shipped resolver produced 0 bytes where the fixed one produces 11336 and recovers 166 messages. The root, `.hermes` and `.mastracode` copies now share the same normalize, sanitize and candidate helpers as the canonical copy, keeping their existing function names, signatures and the `.mastracode` Codex guard (`tests/test_catchup_store_resolution_parity.py`).
+- **An emoji in a folder name made a project unresolvable in every copy, including the canonical one.** Claude Code walks the directory name as UTF-16, so a non-BMP character costs two dashes, while the sanitizer counted codepoints and produced one. Folding is now counted in UTF-16 code units. The rules were measured against 24 real stores whose recorded `cwd` could be read: one model matches all 24, and it also showed that current versions fold `_` while older stores kept it, so both spellings stay in the probe chain and the exact spelling is still probed first.
+- The 15 copies that already folded dots keep that behavior unchanged. `.kiro` is untouched because it ships a different program that reads `.kiro/plan/` and never looks at `~/.claude/projects`.
+
+### Security
+- **Two projects whose paths fold to the same `~/.claude/projects` name could read each other's transcripts.** The mapping is lossy, so `client.acme` and `client-acme` share one directory. Until this release the resolver did not fold those characters and simply missed the directory; folding the way Claude Code folds means it now finds it, so catchup filters transcripts by the `cwd` they record. A transcript is skipped only when it positively records a different project, transcripts that record none are kept because the field is not present in every generation of the format, and a directory whose transcripts all belong to another project is reported instead of used. The filter works per session rather than rejecting the whole directory, because in a collision both projects live there permanently and rejecting it would cost the project its own history. Reproduced with a planted canary against the preceding commit and again after the fix (`tests/test_catchup_cross_project_guard.py`).
+
+### Verification
+- Suite 305 to 311 passing, 282 subtests, plus `sync-ide-folders.py --verify` clean. The new parity suite discovers the copies with `git ls-files` and runs one vector table through each, so the drift that produced #209 fails the suite instead of hiding in a single file.
+
+### Thanks
+- seathatflowsinourveins reported the dot-folding mismatch with an exact blob reference, a working reproduction, and a correct reading of the silent return path (#209).
+
+## [3.8.1] - 2026-07-21
+
+### Fixed
+- **Pi extension: plan resolution no longer depends on the live shell cwd (closes #208, reported by @fd44fdg).** The Pi session cwd follows the shell, so an agent that changed into a subdirectory lost the project's plan entirely: resolution found nothing, the recitation went dark, and the "No task_plan.md found" warning fired on every write and edit. Resolution now anchors on the nearest ancestor directory that carries planning state (`.planning/` or `task_plan.md`), bounded by a `.git` repository boundary and a depth cap so a plan outside the repository can never leak into a session. Explicit `PLAN_ID` pins keep working from any subdirectory. New vitest suite covers the walk, the boundary, and the preserved precedence (`__tests__/plan-anchor.test.ts`).
+- **Pi extension: every injection now states which plan it resolved** (`plan: <id>` or `plan: root`). A stale `.planning/<id>/` directory shadows a root `task_plan.md` by documented precedence (slug beats root since v2.40.0); without a visible label that shadowing was silent and users debugged the wrong plan. The label makes it visible; `set-active-plan` or deleting the stale directory remains the cure.
+- **`init-session` created plans without the v3.8.0 `## Next Step` section.** The scripts write plans from an inline heredoc, not from `templates/task_plan.md`, so the section shipped in the templates never reached created plans. All 26 heredoc copies (sh and PowerShell, canonical plus every mirror) now carry it, and a regression test asserts the created output rather than the template (`test_init_session_output_contains_next_step`).
+
+### Security
+- The Pi extension resolver reached slug-validation and containment parity with the sh resolver. A traversal `PLAN_ID` such as `../../outside` resolved a plan outside `.planning/` (the sh resolver already blocked it), slug-invalid `.active_plan` targets and directory names were accepted, and a scoped winner canonicalizing outside the project (a junctioned slug directory) was followed. All four now match the sh behavior: `SLUG_RE` on every branch, `realpathSync` containment fail-closed on the resolved winner. Found independently by the Opus verification pass and the Sonnet reliability fleet that gate this release.
+- Every Pi runtime consumer that takes a directory (the session-attachment gate, project mode config, attest and catchup script working directories) now routes through the same anchor as plan resolution, and the injected plan label is sanitized to `[A-Za-z0-9._-]` capped at 64 characters.
+
+### Thanks
+- fd44fdg reported the Pi cwd resolution split-brain with a precise root-cause analysis (#208).
+
+## [3.8.0] - 2026-07-21
+
+### Fixed
+- **The Stop hook never fired on macOS or Linux, and was a silent no-op on every platform when `CLAUDE_SKILL_DIR` was unset.** Two dispatch bugs stacked in the SKILL.md Stop scalar: the install-path fallback used a `:-` default that can never substitute (the probed variable is always a non-empty string even when the env var is unset), and the PowerShell branch was selected on every platform because `check-complete.ps1` ships everywhere, so `powershell.exe ... 2>/dev/null` swallowed the dispatch with a suppressed exit 127 wherever PowerShell is absent. Both the legacy completion advisory and the v3 completion gate were dead in those environments. The scalar now selects targets by file existence and dispatches by platform: PowerShell only under MINGW/MSYS/CYGWIN, `sh` elsewhere, with an explicit `exit 0`. Windows output is unchanged. Patched in all 14 SKILL.md variants that carry the scalar. New tests execute the scalar end to end on both CI legs instead of string-matching its shape (`tests/test_stop_hook_dispatch.py`).
+- **session-catchup looked for a `~/.claude/projects/` directory that does not exist on macOS/Linux installs, nor for any project path containing an underscore.** Claude Code keeps underscores and the leading dash of POSIX absolute paths when naming session stores; the mapper replaced `_` with `-` and stripped the leading dash, so recovery after `/clear` silently found nothing in those cases. The mapper now probes the exact spelling first, keeps both legacy spellings as fallbacks for stores created by older versions, and settles ambiguity via the cwd recorded in the newest session file. Fixed in the canonical script and every shipped copy; the drifted older-generation copies (root `scripts/`, `.hermes`, `.mastracode`) received a targeted underscore fix preserving their shape (`tests/test_catchup_project_dir.py`).
+- **A stale SHA-cache hit could report a false `[PLAN TAMPERED]` for a different project.** The attestation cache key was the relative plan path, so every legacy-root project on a machine shared one slot. The key now includes the absolute project root; the cache self-heals with one extra re-hash per plan after upgrade (`tests/test_inject_smart.py`).
+- **`resolve-plan-dir.ps1` reached parity with the sh resolver.** The PowerShell mirror had no slug validation on any branch, its newest-dir scan could resolve a directory without `task_plan.md` (a `sessions/` dir could win), and containment failed open when canonicalization failed. All three now match the sh resolver, including fail-closed containment. A new sh-vs-ps1 parity suite runs the same fixture trees through both resolvers on both CI legs (`tests/test_resolver_parity.py`).
+- **`ledger-append.sh` could write invalid UTF-8 into the run ledger.** The summary was truncated with `cut -c1-200`, which counts bytes and can cut a CJK, Arabic, or emoji codepoint in half, producing a JSONL line that strict readers reject. Truncation now strips a trailing incomplete UTF-8 sequence, via `iconv -c` where available with a pure-sh byte-level fallback; a complete multibyte character ending exactly at the boundary survives. The PowerShell twin was confirmed character-based and aligned to the same 200 budget (`tests/test_ledger_utf8.py`).
+- Line endings are now pinned: new root `.gitattributes` forces LF for `.sh`, `.py`, `.ps1`, and `.svg`, CRLF for `.cmd` and `.bat`. A CRLF-converted shell script fails under `sh` with errors that read like code bugs; the index was audited (all 175 tracked `.sh`/`.py` files already stored LF, no renormalization needed) and a regression test keeps it that way (`tests/test_line_endings.py`).
+
+### Added
+- **Opt-in structure-aware plan injection** (`PWF_INJECT=smart`, or an `inject-smart` token in `.mode`). The default `head -50` injection is position-blind: late in a long plan the in_progress phase, the decision journal, and the errors table all sit past the injected window, so every turn pays the token cost while the window no longer carries the active phase. The smart shape emits the plan title, the Goal / Next Step / Current Phase sections, a phase count, the full first in_progress phase section, and the last 3 Decisions rows, extracted in a single POSIX-awk pass. Plans without `### Phase` headings fall back to the plain head. With no opt-in the output stays byte-identical to v2.43 (`tests/test_inject_smart.py`).
+- **Next Step pointer.** Both task_plan templates now carry a `## Next Step` section directly after `## Goal`, inside every head-50/head-30 injection window, and the 5-Question Reboot Test gained a sixth row: What am I about to do? A fresh session resumes at the named action instead of re-deriving it (`TemplateNextStepTests`).
+- **Tool-result outcomes in session catchup.** The catchup report annotated what the previous session tried but not what happened. Tool lines now carry the matched result: `-> ok`, or `-> FAILED (first error line)`, for both Claude Code sessions (tool_result/is_error) and the OpenCode SQLite path (state.status). Result-free sessions produce byte-identical output to before, proven by a golden test captured prior to the change.
+- **macOS CI leg plus a BSD-userland simulation.** The pytest matrix now includes macos-latest, and a new Linux-leg harness runs the resolver, injection, attestation, and ledger scripts end to end under a simulated BSD userland (no realpath, no readlink, no flock, no sha256sum, BSD-style stat), so a GNU-only-flag regression fails CI before it reaches a Mac (`tests/test_bsd_userland_sim.py`).
+- Three problem-query documentation pages: `docs/claude-code-lost-context-after-compaction.md`, `docs/agent-forgets-plan-after-clear.md`, and `docs/long-running-agent-tasks.md`, each answering the search question in its title from repo facts only, cross-linked, with install routes (`tests/test_seo_docs_pages.py`).
+- `.github/FUNDING.yml` (GitHub Sponsors listing verified active) and a social preview asset (`media/social-preview.svg` + `.png`; the upload under repository Settings remains a manual step).
+
+### Changed
+- **README rebuilt around the product's strongest evidence.** Hero tagline, seven badges in two rows replacing twenty-five in three (the hand-maintained version badge, stale at 3.5.1, is now the dynamic release badge), a before/after `/clear` demo using the skill's real injection format, two committed SVG charts built only from numbers already published in `docs/evals.md` with the internal-v1 framing baked into the images, a mermaid diagram of the hook loop, the install-route matrix at the decision point, one consolidated command table that finally lists `/plan-doctor`, a promoted three-tier platform table, a cost-honesty admonition with the real overhead numbers, a new overhead FAQ entry, and a compact repository map. The unframed comparative badge was removed; recovery numbers appear only with the internal benchmark framing. The 7.6MB banner was downscaled to a 220KB JPEG. The plan-mode FAQ answer no longer asserts anything about plan-mode internals.
+- `llms.txt` rewritten as a Q&A-bearing AI-search surface mirroring the README FAQ, with the same honesty constraints enforced by a new guard test (`tests/test_llms_txt.py`).
+- SEO surface: repository topics swapped (context-rot, session-recovery, claude-code-skills in; pi, copilot, developer-tools out), repository description refreshed around session recovery, compaction, and context rot, `plugin.json` keywords cleaned (clawd, clawdbot, clawdhub out; long-running-agents, session-recovery, context-rot, agent-planning in), and the CITATION.cff abstract broadened to the 60+ agent Agent Skills story.
+
+## [3.7.0] - 2026-07-18
+
+### Added
+
+- **The repo now ships the cross-tool Agent Skills standard layout in-tree: `.agents/skills/planning-with-files/`.** Tools that read the standard path natively (Zed, Amp, Warp, Devin, Antigravity, Gemini CLI, Cursor, and the wider agentskills.io adopter list) discover the current skill from a plain `git clone` with no per-tool setup. The mirror carries the full canonical surface: SKILL.md, references, all six templates including the autonomous plan template, and the complete script set (hook dispatchers, ledger tooling, doctor). It is wired into both maintenance systems so it cannot silently rot: `sync-ide-folders.py` gained a `.agents` manifest, and the SKILL.md joined the `bump-version.py` parity set and the version-parity test (now 18 locked entries).
+
+- **`plan-doctor.sh` now ships in every synced IDE skill folder** (`.codebuddy`, `.codex`, `.continue`, `.factory`, `.gemini`, `.pi`, and the new `.agents`), not only the two canonical `scripts/` locations.
+
+### Changed
+
+- **`docs/gemini.md` now recommends the Agent Skills standard path.** Gemini CLI reads `.agents/skills/` natively and that alias takes precedence, so new installs get the current, version-locked skill instead of the intentionally version-lagged `.gemini/skills/` variant, which stays in place for existing installs. Manual install methods now copy from the standard layout as well.
+
+- `AGENTS.md` and the `bump-version.py` docstring now describe the actual parity set (18 entries including `.agents`), replacing the stale 19-file wording that predated the `.pi` and `.kiro` scheme split.
+
+### Verification
+
+- Full suite green (217 passed) with the `.agents` SKILL.md under version-parity lock. `sync-ide-folders.py --verify` covers the mirror's shared files from this release on.
+
+## [3.6.0] - 2026-07-18
+
+### Fixed
+
+- **Plan resolution and hook injection went silently dark on machines with Windows-native coreutils on PATH.** A native coreutils build (for example `C:\Program Files\coreutils`, increasingly common via winget or uutils) shadows Git Bash's tools inside `sh`, and its `realpath` canonicalizes MSYS `/c/...` input to `C:\`-style backslash output. The containment guard in `resolve-plan-dir.sh` and `inject-plan.sh` compares canonical paths with a forward-slash prefix pattern, so every comparison failed: the resolver resolved nothing, `inject-plan.sh` emitted nothing, and every hook fire exited 0 with no error. The plan mechanisms this skill is built on were fully disabled on such machines with no visible symptom, and Linux CI could never reproduce it. Canonical paths are now backslash-normalized (pure-shell, no extra process) before comparison. Found live during a repo audit on a machine where 33 local tests failed while CI stayed green.
+
+- **The resolver's containment root still canonicalized `$PWD` instead of `.`.** The v3.2.0 fix for 8.3 short-name and `/tmp`-alias mismatches landed in `inject-plan.sh` only; `resolve-plan-dir.sh` kept the old form and additionally canonicalized absolute candidates built from the `$PWD` string, which a Windows-native `realpath` does not spell the same way as a short-form process cwd. The resolver now canonicalizes the root via `.` and checks candidates through their cwd-relative form, so both sides resolve through the same physical-cwd base. Emitted output is unchanged.
+
+- **The local `test_ledger.py` hang on Windows is gone.** Known since v3.4.1 as "hangs locally, green on CI"; it stopped reproducing once the containment comparison was fixed. The ledger suite (12 tests) now passes locally in under 15 seconds.
+
+### Added
+
+- **`/plan-doctor` self-check command** (`commands/plan-doctor.md`, `scripts/plan-doctor.sh`, dual-shipped and parity-tested). Every failure in this class is silent by design (hooks always exit 0), so a broken install looks identical to "no plan yet". The doctor answers, in one pass: does resolution work here and which plan wins, does injection actually emit plan context, what path shape does the canonicalizer produce (warns about the pre-v3.6.0 dark condition), is the plan attested, which install surfaces exist on this machine, and what one hook fire costs in wall-clock. From the July 2026 benchmark improvement backlog.
+
+- **Install-route matrix and trust prerequisite in `docs/installation.md`.** The plugin route ships `commands/` and registers hooks reliably; `npx skills add` and manual skill copies ship no slash commands, and SKILL.md frontmatter hooks have been observed unregistered on project-level installs (headless Claude Code 2.1.201, July 2026 benchmark). Project trust (`hasTrustDialogAccepted`) silently gates project-level skills. Both conditions are now documented with the doctor as the verification step.
+
+- **Belt-and-suspenders trigger line for CLAUDE.md.** The July 2026 benchmark measured unforced skill engagement at 60-67% while always-loaded rules-file instructions engaged 100%. Install docs now offer a one-line CLAUDE.md snippet that makes engagement deterministic while the skill description keeps handling discovery.
+
+- **Regression tests for the backslash-canonicalizer class** (`tests/test_containment.py`): a PATH-prepended stub `realpath` reproduces the Windows-native output shape on every platform, so ubuntu CI now guards a Windows-only field failure.
+
+### Changed
+
+- **Hook fire cost dropped.** Per-candidate `grep -Eq` slug checks and `basename` calls in `resolve-plan-dir.sh` and `inject-plan.sh` were replaced with equivalent shell builtins (case patterns and parameter expansion), and the resolver computes its containment root once per run instead of once per candidate. One `inject-plan.sh` fire measures 289ms wall-clock on the same machine that measured 2.0-2.4s at v3.4.0 (July 2026 benchmark, F4). Output is byte-identical; the legacy invariant holds.
+
+- README documents v3.6.0, adds a plan-mode handoff FAQ (how an accepted plan-mode plan becomes `task_plan.md` phases, answering the open question in #19), and updates the supported-agents answer to the current `.agents/skills/` standard landscape. The stale Manus-2025 "one tool call per turn" guidance was replaced with the 2026 parallel-host update in the last two variant copies that still carried it (`.factory`, `.mastracode`).
+
+### Verification
+
+- Full suite green locally on the machine that reproduced the bug: 205 passed plus 12 ledger tests, 5 skipped, 0 failed (was 33 failed before the fix). Live smoke: `sh scripts/inject-plan.sh` emits plan context in a repo with an active plan, `scripts/plan-doctor.sh` reports PASS on resolution and injection with the Windows-native canonicalizer present.
+
+## [3.5.1] - 2026-07-14
+
+### Fixed
+
+- **Codex Windows hook resolver defaulted to the WSL bash launcher** (extracted from PR #207 by @mahdiit). The shell resolver in `codex_hook_adapter` preferred `C:\Windows\System32\bash.exe`, the WSL launcher, whenever Git Bash's `usr\bin` was not on PATH, the default Git for Windows install layout. On machines where WSL is present but no distro is installed, a common Docker Desktop setup, that launcher exists on disk but fails immediately, so every shell hook silently failed. This is why #201 and #204 kept resurfacing on some Windows machines even after those releases shipped. The resolver now skips WSL launchers, both the System32 binary and the Microsoft Store WindowsApps alias, and continues on to the Git for Windows probe.
+
+- **`pwf-hook.cmd` lost the Python interpreter under Codex's reduced PATH** (also from PR #207). Codex starts hooks with a trimmed environment, so the launcher's plain `py -3` / `python` lookup often found nothing. `pwf-hook.cmd` now honors a `PYTHON_BIN` override, probes the standard `uv` and CPython install locations, and quotes the interpreter path so installs under a path containing spaces still resolve.
+
+- **Pi extension 1.2.1: pre-tool recitations and the tamper notice were consumed by interactive tool dialogs** (#206, diagnosed with the exact mechanism by @jschmied). The `tool_call` hook delivered queued planning text as steer, but when an interactive tool such as AskUserQuestion blocked the turn on its own custom UI, the steer text was read as the dialog's answer instead of reaching the model. Recitations and the tamper notice are now delivered as `nextTurn`, landing after the interactive tool releases the turn instead of being swallowed by it. Bundled Pi extension bumped to 1.2.1.
+
+- **Two test-portability failures surfaced by the first hosted-runner run** (PR #198 by @Yigtwxx, test files only, no production script changes). `tests/test_containment.py` canonicalized the resolver's Git Bash POSIX path with `os.path.realpath`, which read `/tmp/...` as `C:\tmp` and failed the escaping-symlink containment assertion on symlink-capable `windows-latest`; a `host_realpath()` helper now maps the path back with `cygpath` before comparing. `tests/test_path_fix.py` ran two Windows-shaped path vectors on `ubuntu-latest`, where `Path.resolve()` treats `C:/...` as relative and prepends the CWD; both now skip unless `os.name == "nt"`, the only platform where that input shape is meaningful. In both cases the resolver rejected the escape correctly and only the test comparison was wrong.
+
+### Added
+
+- **CI test workflow** (`.github/workflows/tests.yml`, PR #199 by @Yigtwxx, closes #197). Runs the pytest suite on `ubuntu-latest` and `windows-latest` (Python 3.12) plus the Pi extension vitest suite on `ubuntu-latest` (Node 22), on every pull request and push to master. Until now the only CI was the Tessl skill-prose review, so nothing ran the 200+ pytest tests or the 21 Pi vitest tests that CONTRIBUTING.md asks contributors to run before opening a PR. The `windows-latest` leg targets the recurring Windows regression class (the v3.2.0 audit found `session-catchup.py` silently non-functional on Windows). Workflow permissions are `contents: read` only, `fail-fast: false` keeps a Windows-only failure visible instead of masked by a cancel, and an explicit step asserts `sh` is on PATH so the roughly ten hook tests that skip without it cannot silently drop coverage.
+
+### Verification
+
+- Python suite green on master before merge (200 passed, 5 skipped on a non-symlink-capable Windows host). Contributor's hosted-runner run on PR #199 green on all three jobs: pytest on ubuntu with symlink containment tests running, the equivalent profile on windows, and 21 vitest.
+- Supply-chain review on PR #198 and #199: no new runtime dependencies, no install scripts, no bin shims. The workflow installs `pytest` and `pyyaml` for the pytest job and runs `npm install` against the Pi extension's existing devDependencies (vitest, typescript, @types/node). It uses `pull_request` (not `pull_request_target`), so fork PRs run with a read-only token and no secret access.
+
+### Thanks
+
+- Mahdi (@mahdiit) for producing the Codex Windows WSL bash launcher fix and the Windows Python discovery hardening (PR #207), using Codex Terra after v3.4.1 still failed to clear the hook errors on his own machine.
+- jschmied for diagnosing #206 down to the exact runtime location, steer delivered recitations consumed by AskUserQuestion's interactive dialog, and for the `nextTurn` delivery fix that shipped.
+- Yigtwxx (Yiğit) for filing the CI gap (#197) and landing both the test-portability fixes (#198) and the pytest plus vitest workflow (#199).
+
+## [3.5.0] - 2026-07-13
+
+### Fixed
+
+- **Codex hooks on Windows emitted invalid JSON and failed on Unicode** (PR #205 by @yolo0731, closes #204). On Windows the Codex front door forwarded plain `[planning-with-files]` stdout where Codex expects `hookSpecificOutput.additionalContext` (SessionStart, UserPromptSubmit) or a common-fields object (PreCompact), so those hooks were rejected. UTF-8 plan text also broke twice, once decoding shell output through the Windows code page in `subprocess.run(text=True)` and again writing `ensure_ascii=False` JSON through cmd.exe. The fix serializes each event in its supported Codex JSON shape with ASCII-safe output, decodes shell output as UTF-8 with `errors="replace"`, routes PreToolUse plan text through model-visible `additionalContext`, resolves scoped `.planning/<slug>/` plans in PermissionRequest, adds `clear|compact` to the SessionStart matcher, and writes the `.active_plan` pointer as UTF-8 without a BOM. The containment resolver also now fails closed when canonicalization is unavailable. 34 files, with the three-file script triple applied identically across every adapter copy. Scope is Windows Codex, matching the report.
+
+- **Closed and complete plans kept nagging "Task incomplete" in the Pi extension** (#203, reported by @ziyu4huang). `resolveNewestPlanDir` ranked plan directories by directory mtime, which does not change when a `task_plan.md`'s contents are edited, so a finished plan lost to an older incomplete sibling and `agent_end` nagged with that sibling's stale count. Resolution now ranks by the `task_plan.md` file mtime. The extension also had no close-marker awareness: `readPlanStatus` now parses the pwf close marker and exposes `status.closed`, `agent_end` returns early on a closed plan, and the auto-continue loop stops on close. A `PWF_DEBUG` diagnostic logs the resolved cwd, plan id, closed state, and phase count before the nag. Bundled Pi extension bumped to 1.2.0.
+
+- **Four language commands invoked a skill namespace that does not exist.** `commands/plan-ar.md`, `plan-de.md`, `plan-es.md`, and `plan-zh.md` referenced `planning-with-files-<lang>:planning-with-files-<lang>`; the skills are registered under the single plugin namespace `planning-with-files:planning-with-files-<lang>`, which the English commands already used. Corrected all four.
+
+### Added
+
+- **Traditional Chinese slash command** (`commands/plan-zht.md`, `/plan-zht`). The `planning-with-files-zht` skill shipped without a matching command; this closes the ar/de/es/zh/zht command parity gap.
+
+- **README now documents the full v3 command, hook, and mode surface.** The visible command table listed only three commands with v2.11.0 and v2.15.0 tags while the plugin ships `plan-goal`, `plan-loop`, `plan-attest`, `pwf`, and the language commands. Added visible sections for the Claude Code and Pi command tables, a v3 long-running-agent features section, a hooks-and-modes reference across Claude Code, Codex, and Pi, and a "command names vs skill names" note that states there is no `/pwf-de` or `/planning-with-files:planning-with-files-goal`. All additive.
+
+- **Plan lifecycle is now documented** (#202, asked by @kcinzgg). `docs/workflow.md` gains an "After Completion" section stating that planning files are ephemeral working memory, gitignored by default, and not archived automatically, with guidance on retaining a completed plan and a note that a completion-triggered archive step is a welcome opt-in extension. Pointers added in `docs/quickstart.md` and the README FAQ. This writes down the intent that issue #14 answered informally.
+
+### Security
+
+- Independent supply-chain audit of PR #205 before merge (a classifier plus two adversarial containment passes, all clean): no new dependencies, no install scripts, no bin shims, no network calls, no eval of untrusted input. The one security-relevant change (containment moving from fail-open to fail-closed) is a hardening, covered by an added junction-escape rejection test.
+
+### Thanks
+
+- @yolo0731 for the Codex Windows hook fix (#204, PR #205), the protocol-safe JSON serialization and the UTF-8 handling.
+- @ziyu4huang for the precise #203 diagnosis, verified against the extension's own exported functions.
+- @kcinzgg for the #202 question that surfaced the undocumented plan lifecycle.
+
+## [3.4.1] - 2026-07-12
+
+### Fixed
+
+- **Codex hooks failed on Windows with "hook exited with code 1"** (closes #201, reported by @mahdiit). Every hook in `.codex/hooks.json` carried only a POSIX `command` (`sh`, `python3`, `2>/dev/null`, `$HOME`, a trailing `|| true`). Codex on Windows runs that string through the native command interpreter, not a POSIX shell, so `python3` hit the Microsoft Store alias, `2>/dev/null` was an invalid path, and the `|| true` success guard itself failed because `true` is not a Windows command. The chain exited non-zero and Codex reported the hook as failed on every Bash call. Reproduced on Windows: the PostToolUse command exits 1 when Git's `usr\bin` (home of `sh` and `true`) is not on PATH, which is the default Git for Windows layout.
+
+### Added
+
+- **Windows hook execution for Codex** via the per-hook `commandWindows` override, the mechanism OpenAI's hooks documentation sanctions. The POSIX `command` is untouched, so macOS and Linux stay byte-for-byte unchanged. On Windows all seven hooks route through a new launcher, `.codex/hooks/pwf-hook.cmd`, which selects a real Python (`py -3`, falling back to `python`, never the Store `python3` alias) and always exits 0 so an advisory hook cannot surface an error. The four Python hooks run their entry point directly; the three shell hooks route through a new front door, `.codex/hooks/run_sh.py`. `codex_hook_adapter.run_shell_script` now resolves the Git for Windows `sh.exe` by anchoring on `git.exe` and the standard install roots, so the shell scripts run even when Git's `usr\bin` is off PATH, and it hands `session-catchup.py` a real interpreter through `PYTHON_BIN`. Without Git for Windows the three shell hooks degrade to a silent no-op instead of an error, and the four Python hooks still work. The `docs/codex.md` Windows section was rewritten (it previously stated hooks were disabled on Windows).
+
+### Verification
+
+- Codex hook suites green: `tests/test_codex_hooks.py` (11 tests, including a cross-platform guard that every hook declares a `commandWindows` free of the POSIX tokens that break on Windows, and a Windows-only end-to-end test of the `run_sh.py` front door) and `tests/test_codex_session_isolation.py` (6 tests). Version parity and frontmatter suites green after the bump. End-to-end on Windows: PostToolUse, SessionStart, and PreToolUse all exit 0 with correct output, including a simulation of the reporter's environment (Git installed, `usr\bin` off PATH) where the `git.exe` anchor resolves `sh`, and a no-Git case that degrades to a silent no-op.
+- Supply-chain review: no new runtime dependencies, no install scripts, no bin shims. Two new files under `.codex/hooks/` (`pwf-hook.cmd`, `run_sh.py`), both Windows-only entry points that reuse the existing adapter and shell scripts.
+
+### Thanks
+
+- @mahdiit (Mahdi) for reporting the Codex Windows hook failure (#201) with the exact error and environment.
+
+## [3.4.0] - 2026-07-06
+
+### Added
+
+- **`PLANNING_DISABLED=1` per-invocation opt-out** (closes #195, reported by @marcmuon). One-shot sessions that share a working directory with an active plan (a CI review bot run via `codex exec`, a read-only research agent, a nested orchestrator) were hijacked by the hooks: plan context injected, the actual output redirected into `progress.md`, and a fabricated completed phase appended to `task_plan.md`. All Codex hook entry points (`session-start.sh`, `user-prompt-submit.sh`, `pre-tool-use.sh`, `post-tool-use.sh`, `stop.sh`, `pre-compact.sh`, plus the Python adapter route via `codex_hook_adapter.is_session_attached`) and the canonical dispatchers (`inject-plan.sh`, `gate-stop.sh`, `check-complete.sh`/`.ps1`) now exit before reading the plan when `PLANNING_DISABLED=1` is set in the environment. PreToolUse still emits its allow decision so tool calls proceed normally. The guard ships in every distributed copy: canonical scripts, the skill package, all sync-managed IDE mirrors, the five language variants, the standalone `.kiro` copy, and the `clawhub-upload` bundle. Usage documented in `docs/codex.md`. New `tests/test_planning_disabled_optout.py` (12 tests) covers baseline behavior, disabled behavior, the #195 acceptance criterion (plan files byte-for-byte unchanged after a full disabled hook pass), and a guard-presence sweep across every copy.
+
+### Fixed
+
+- **`docs/codex.md` still described the pre-v3.1.0 blocking Stop hook.** The hook table said Stop "blocks once when phases are incomplete"; that block path was removed in v3.1.0 (PR #180) and the installed hook has emitted an advisory reminder since. The row now matches the shipped behavior. The `decision: block` half of #195 was reported against a v2.41.0 bundle shipped by oh-my-codex; current releases do not block.
+
+### Verification
+
+- Python suite: 200 passed, 5 skipped, 0 failed (12 new opt-out tests).
+- Functional smoke test on a live temp plan: baseline injection unchanged without the variable; with it set, no hook output, tool calls still allowed, plan files byte-identical afterwards.
+- `scripts/sync-ide-folders.py --verify`: all IDE folders in sync. All modified `.sh` files pass `sh -n`; all modified `.ps1` files parse clean.
+
+### Thanks
+
+- @marcmuon (Marc Kelechava) for the precise report separating this failure from #178 and #146, with reproductions for both symptoms, the root-cause file list, and acceptance criteria this release implements directly (#195).
+
+## [3.3.0] - 2026-07-06
+
+### Added
+
+- **`/plan-execute` approval gate for the Pi extension** (PR #193 by @Dikshj, closes #190, requested by @lazyst). The Pi extension hooks previously activated as soon as `task_plan.md` existed on disk: plan injection on `before_agent_start`, pre-tool recitation on `tool_call`, post-write reminders on `tool_result`, and auto-continue on `agent_end` could all start while the user was still reviewing a draft plan. The extension now stays passive until the user approves the active plan with `/plan-execute`; before approval it shows a status line ("run /plan-execute to activate hooks") and nothing else. Approval is scoped to the current session and plan path, is cleared on session lifecycle events, and `/plan-execute reset` returns the plan to passive review mode. A plan whose SHA-256 attestation shows tampering cannot be approved. This gates initial hook activation only; the v3 gate mode (which gates stopping on an incomplete plan) is unchanged. Pi docs, Pi skill docs, and runtime tests cover the passive review flow.
+
+### Verification
+
+- Python suite: 188 passed, 5 skipped, 0 failed.
+- Pi extension vitest suite: 21 passed (2 files).
+- `scripts/sync-ide-folders.py --verify`: all IDE folders in sync.
+- Supply-chain review on PR #193: no new dependencies, no install scripts, no bin shims, no network calls; changes confined to the Pi extension runtime, its tests, and documentation. The gate itself tightens the injection path, since a tampered or unreviewed plan can no longer reach model context automatically.
+
+### Thanks
+
+- @Dikshj (diksha) for implementing the /plan-execute approval gate with runtime and docs test coverage (PR #193).
+- @lazyst for the feature request and the precise passive-until-confirmed workflow description (#190).
+
 ## [3.2.0] - 2026-07-03
 
 A repository health audit covering the v3 long-running-session mechanism, the

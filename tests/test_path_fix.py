@@ -29,10 +29,12 @@ class SessionCatchupPathSanitizeTests(unittest.TestCase):
         project_dir = session_catchup.get_project_dir_claude(project_path)
         return project_dir.name
 
+    @unittest.skipUnless(os.name == "nt", "Windows-shaped input; on POSIX Path.resolve() treats C:/... as relative and prepends the CWD")
     def test_windows_native_path(self) -> None:
         result = self._sanitized_name("C:/Users/oasrvadmin/Documents/planning-with-files-repo")
         self.assertEqual(result, "C--Users-oasrvadmin-Documents-planning-with-files-repo")
 
+    @unittest.skipUnless(os.name == "nt", "Windows-shaped input; on POSIX Path.resolve() treats C:/... as relative and prepends the CWD")
     def test_git_bash_path(self) -> None:
         result = self._sanitized_name("/c/Users/oasrvadmin/Documents/planning-with-files-repo")
         self.assertEqual(result, "C--Users-oasrvadmin-Documents-planning-with-files-repo")

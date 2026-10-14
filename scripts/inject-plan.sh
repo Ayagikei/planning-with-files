@@ -90,11 +90,11 @@ canonicalize() {
             printf "%s\n" "${out}"; return 0; }
     fi
     if command -v python3 >/dev/null 2>&1; then
-        out="$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
+        out="$(python3 -I -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
             && [ -n "${out}" ] && { printf "%s\n" "${out}"; return 0; }
     fi
     if command -v python >/dev/null 2>&1; then
-        out="$(python -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
+        out="$(python -I -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
             && [ -n "${out}" ] && { printf "%s\n" "${out}"; return 0; }
     fi
     return 1

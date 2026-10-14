@@ -79,11 +79,11 @@ canonicalize() {
             printf "%s\n" "${out}"; return 0; }
     fi
     if command -v python3 >/dev/null 2>&1; then
-        out="$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
+        out="$(python3 -I -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
             && [ -n "${out}" ] && { printf "%s\n" "${out}"; return 0; }
     fi
     if command -v python >/dev/null 2>&1; then
-        out="$(python -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
+        out="$(python -I -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "${target}" 2>/dev/null)" \
             && [ -n "${out}" ] && { printf "%s\n" "${out}"; return 0; }
     fi
     return 1
@@ -152,11 +152,11 @@ mtime_of() {
     out="$(date -r "${target}" +%s 2>/dev/null)"
     if [ -n "${out}" ]; then printf "%s\n" "${out}"; return 0; fi
     if command -v python3 >/dev/null 2>&1; then
-        out="$(python3 -c "import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))" "${target}" 2>/dev/null)"
+        out="$(python3 -I -c "import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))" "${target}" 2>/dev/null)"
         if [ -n "${out}" ]; then printf "%s\n" "${out}"; return 0; fi
     fi
     if command -v python >/dev/null 2>&1; then
-        out="$(python -c "import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))" "${target}" 2>/dev/null)"
+        out="$(python -I -c "import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))" "${target}" 2>/dev/null)"
         if [ -n "${out}" ]; then printf "%s\n" "${out}"; return 0; fi
     fi
     if command -v perl >/dev/null 2>&1; then

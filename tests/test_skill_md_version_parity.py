@@ -3,7 +3,7 @@
 Background — the repo ships 14 SKILL.md variants plus plugin.json, marketplace.json
 and CITATION.cff. Past releases (v2.34.1, v2.36.0, v2.36.2, v2.36.3) repeatedly
 shipped with one or more variants stuck on the old version because the bump was
-done by hand across 19 files. This test fails the build the moment that drifts.
+done by hand across the parity set. This test fails the build the moment that drifts.
 
 Source of truth = canonical English SKILL.md. Every file in PARITY_FILES below
 must report the same `metadata.version` (or `version` for JSON/CFF). Lagging
@@ -27,11 +27,6 @@ CANONICAL_SKILL = REPO_ROOT / "skills" / "planning-with-files" / "SKILL.md"
 
 PARITY_SKILL_MD = [
     "skills/planning-with-files/SKILL.md",
-    "skills/planning-with-files-ar/SKILL.md",
-    "skills/planning-with-files-de/SKILL.md",
-    "skills/planning-with-files-es/SKILL.md",
-    "skills/planning-with-files-zh/SKILL.md",
-    "skills/planning-with-files-zht/SKILL.md",
     ".codebuddy/skills/planning-with-files/SKILL.md",
     ".codex/skills/planning-with-files/SKILL.md",
     ".cursor/skills/planning-with-files/SKILL.md",

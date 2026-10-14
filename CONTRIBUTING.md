@@ -102,19 +102,9 @@ The project maintains contributor credit in `CONTRIBUTORS.md`.
 
 Merged pull requests earn a permanent contributor entry. Keep your Git author information accurate because your commits remain part of the project history and are not treated as disposable metadata.
 
-Small contributions count. Documentation fixes, language variant updates, tests, and adapter improvements all help maintain the project.
+Small contributions count. Documentation fixes, tests, and adapter improvements all help maintain the project.
 
-## Language variant contributions
-
-Translations and language variant improvements are welcome.
-
-When working on a language variant, compare it against the canonical skill in:
-
-```text
-skills/planning-with-files/SKILL.md
-```
-
-Keep translated variants in parity with the canonical version. Do not ship a localized description with an English body stub. If a section cannot be translated yet, leave a clear note in the pull request instead of hiding incomplete work in the file.
+This fork keeps the English skill and slash commands only. Do not restore `planning-with-files-{ar,de,es,zh,zht}` or `commands/plan-{ar,de,es,zh,zht}.md`.
 
 ## Where to ask questions
 

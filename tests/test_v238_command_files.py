@@ -74,6 +74,16 @@ class V238CommandFileTests(unittest.TestCase):
         for f in ("task_plan.md", "progress.md", "findings.md"):
             self.assertIn(f, body, f"loop.md template should reference {f}")
 
+    def test_commands_are_ignored_as_non_skills(self) -> None:
+        fdignore = REPO_ROOT / ".fdignore"
+        self.assertTrue(fdignore.is_file(), fdignore)
+        text = fdignore.read_text(encoding="utf-8")
+        self.assertIn("!skills/", text)
+        self.assertIn("*", text)
+        for lang in ("plan-ar", "plan-de", "plan-es", "plan-zh", "plan-zht"):
+            self.assertFalse((COMMANDS_DIR / f"{lang}.md").exists(), lang)
+
+
 
 if __name__ == "__main__":
     unittest.main()

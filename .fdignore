@@ -1,0 +1,6 @@
+# This checkout is the full upstream repo, not a skill folder.
+# Pi recursively loads nested *.md under ~/.agents/skills as skills.
+# Only the Agent Skill at skills/planning-with-files/ should be visible.
+*
+!skills/
+!skills/**

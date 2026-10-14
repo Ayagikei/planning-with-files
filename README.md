@@ -205,35 +205,6 @@ Skill-route installs can end up silently hook-less (project trust not accepted, 
 
 Install acting up? Open your agent and say: *"Read docs/installation.md and docs/troubleshooting.md from OthmanAdi/planning-with-files and fix my install."* Then run `/plan-doctor`.
 
-<details>
-<summary><strong>🌐 Available in 5 other languages</strong></summary>
-
-**🇸🇦 العربية / Arabic**
-```bash
-npx skills add OthmanAdi/planning-with-files --skill planning-with-files-ar -g
-```
-
-**🇩🇪 Deutsch / German**
-```bash
-npx skills add OthmanAdi/planning-with-files --skill planning-with-files-de -g
-```
-
-**🇪🇸 Español / Spanish**
-```bash
-npx skills add OthmanAdi/planning-with-files --skill planning-with-files-es -g
-```
-
-**🇨🇳 中文版 / Chinese (Simplified)**
-```bash
-npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zh -g
-```
-
-**🇹🇼 正體中文版 / Chinese (Traditional)**
-```bash
-npx skills add OthmanAdi/planning-with-files --skill planning-with-files-zht -g
-```
-
-</details>
 
 <details>
 <summary><strong>Prefer <code>/planning-with-files</code> with no prefix?</strong></summary>
@@ -267,7 +238,6 @@ Slash commands ship with the Claude Code plugin route (see the install matrix ab
 | `/planning-with-files:plan-attest` | type `/plan-attest` | Locks `task_plan.md` with a SHA-256; hooks refuse a tampered plan body; `--show` / `--clear` (v2.37.0+) |
 | `/planning-with-files:plan-goal` | type `/plan-goal` | Runs until the plan reports complete, composing with Claude Code `/goal` (v2.38.0+) |
 | `/planning-with-files:plan-loop` | type `/plan-loop` | Planning-aware cadence on `/loop`, default 10 minute tick (v2.38.0+) |
-| `/planning-with-files:plan-de` | type `/plan-de` | Start planning in German; also `-ar`, `-es`, `-zh`, `-zht` (v2.33.0+) |
 | `/planning-with-files:start` | type `/planning` | Original start command |
 
 Typing `/plan` prefix-matches every `plan*` command in autocomplete; `/planning-with-files:status` autocompletes as `/status` (the older `/plan:status` label predates the rename).
@@ -290,11 +260,11 @@ On Pi there is no `/plan` command to create the files; the skill creates them, t
 
 | Platform | You type | Examples |
 |----------|----------|----------|
-| Claude Code | `/planning-with-files:<verb>`, autocompletes from the short form | `/plan`, `/pwf`, `/plan-attest`, `/plan-de` |
+| Claude Code | `/planning-with-files:<verb>`, autocompletes from the short form | `/plan`, `/pwf`, `/plan-attest` |
 | Pi | bare form, no prefix | `/plan-status`, `/plan-execute`, `/plan-goal` |
 | Continue.dev | `/planning-with-files` | |
 
-The model-invocable SKILLS are named `planning-with-files:planning-with-files` (and `-ar`, `-de`, `-es`, `-zh`, `-zht`); the doubled form is the skill id, not a command you type. There is no `/pwf-de` and no `/planning-with-files:planning-with-files-goal`; `/pwf` is just a short alias for `/plan`.
+The model-invocable skill is named `planning-with-files:planning-with-files`; the doubled form is the skill id, not a command you type. There is no `/planning-with-files:planning-with-files-goal`; `/pwf` is just a short alias for `/plan`.
 
 ## Works across 18+ platforms
 
